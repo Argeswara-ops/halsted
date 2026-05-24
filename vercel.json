@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "index.php": {
+      "runtime": "vercel-php@0.7.3"
+    },
+    "test-upload.php": {
+      "runtime": "vercel-php@0.7.3"
+    }
+  },
+  "routes": [
+    { "src": "/test-upload.js", "dest": "/test-upload.js" },
+    { "src": "/samples/(.*)", "dest": "/samples/$1" },
+    { "src": "/(.*)", "dest": "/index.php" }
+  ]
+}
