@@ -11,298 +11,7 @@ $inputType = 'paste';
 $active_tab = 'home';
 $files_data = [];
 
-// Match braces to extract function body
-function getFunctionBody($code, $start_pos) {
-    $length = strlen($code);
-    $brace_count = 0;
-    $body_start = -1;
-    for ($i = $start_pos; $i < $length; $i++) {
-        if ($code[$i] === '{') {
-            $body_start = $i;
-            $brace_count = 1;
-            break;
-        }
-    }
-    if ($body_start === -1) return '';
-    
-    for ($i = $body_start + 1; $i < $length; $i++) {
-        if ($code[$i] === '"' || $code[$i] === "'") {
-            $quote = $code[$i];
-            $i++;
-            while ($i < $length && $code[$i] !== $quote) {
-                if ($code[$i] === '\\') $i++;
-                $i++;
-            }
-            continue;
-        }
-        if ($code[$i] === '/' && $i + 1 < $length && $code[$i+1] === '/') {
-            while ($i < $length && $code[$i] !== "\n") $i++;
-            continue;
-        }
-        if ($code[$i] === '/' && $i + 1 < $length && $code[$i+1] === '*') {
-            $i += 2;
-            while ($i + 1 < $length && !($code[$i] === '*' && $code[$i+1] === '/')) $i++;
-            $i++;
-            continue;
-        }
-        if ($code[$i] === '{') {
-            $brace_count++;
-        } elseif ($code[$i] === '}') {
-            $brace_count--;
-            if ($brace_count === 0) {
-                return substr($code, $body_start, $i - $body_start + 1);
-            }
-        }
-    }
-    return substr($code, $body_start);
-}
-
-// Calculate Cyclomatic Complexity (McCabe)
-function calculateMcCabe($function_body) {
-    // Strip comments
-    $comment_patterns = array('/\\/\\*[\\s\\S]*?\\*\\//', '/\\/\\/.*$/m');
-    $clean_body = preg_replace($comment_patterns, '', $function_body);
-
-    $cc = 1;
-    // Keywords representing decisions
-    $keywords = ['if', 'elseif', 'else if', 'while', 'for', 'foreach', 'case', 'catch'];
-    foreach ($keywords as $kw) {
-        $cc += preg_match_all('/\b' . preg_quote($kw, '/') . '\b/i', $clean_body);
-    }
-    // Logical operators representing decisions
-    $operators = ['&&', '||', '??', '?'];
-    foreach ($operators as $op) {
-        $cc += preg_match_all('/' . preg_quote($op, '/') . '/', $clean_body);
-    }
-    return $cc;
-}
-
-// Analyze the uploaded project files (single or multiple)
-function analyzeProject($files) {
-    $total_files = count($files);
-    $all_functions = [];
-    $files_report = [];
-    
-    $global_operators = [
-        '->', '::', '++', '--', '+=', '-=', '*=', '/=', '.=', '===', '==', '!==', '!=', 
-        '<=', '>=', '&&', '||', '+', '-', '*', '/', '%', '=', '!', '<', '>', '&', '|', '^',
-        '?', ':', ';', ',', '(', ')', '[', ']', '{', '}'
-    ];
-    usort($global_operators, function($a, $b) {
-        return strlen($b) - strlen($a);
-    });
-    $escaped_ops = array_map(function($op) { return preg_quote($op, '#'); }, $global_operators);
-    $operator_pattern = '#' . implode('|', $escaped_ops) . '#';
-
-    $total_n1 = [];
-    $total_n2 = [];
-    $total_N1 = 0;
-    $total_N2 = 0;
-    $total_lines = 0;
-    
-    foreach ($files as $fileName => $code) {
-        $lines_count = count(explode("\n", $code));
-        $total_lines += $lines_count;
-
-        // Strip comments for token counts
-        $comment_patterns = array('/\\/\\*[\\s\\S]*?\\*\\//', '/\\/\\/.*$/m');
-        $clean_code = preg_replace($comment_patterns, '', $code);
-        
-        // Halstead Operators
-        $file_operators = [];
-        if (preg_match_all($operator_pattern, $clean_code, $op_matches)) {
-            $file_operators = $op_matches[0];
-        }
-        $total_N1 += count($file_operators);
-        $total_n1 = array_merge($total_n1, $file_operators);
-
-        // Halstead Operands
-        $operand_text = preg_replace($operator_pattern, ' ', $clean_code);
-        $file_operands = [];
-        if (preg_match_all('/\\$[a-zA-Z_][a-zA-Z0-9_]*|"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"|\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'|\\b[0-9]+\\b|\\b[a-zA-Z_][a-zA-Z0-9_]*\\b/', $operand_text, $operand_matches)) {
-            $file_operands = $operand_matches[0];
-        }
-        $total_N2 += count($file_operands);
-        $total_n2 = array_merge($total_n2, $file_operands);
-
-        // Scan functions for McCabe
-        $file_functions = [];
-        
-        // PHP functions: function name(...) or public function name(...) etc.
-        preg_match_all('/(?:(?:public|private|protected|static)\s+)*function\s+([a-zA-Z0-9_]+)\s*\(/i', $code, $php_matches, PREG_OFFSET_CAPTURE);
-        foreach ($php_matches[1] as $match) {
-            $file_functions[] = [
-                'name' => $match[0],
-                'offset' => $match[1],
-                'type' => 'PHP Function'
-            ];
-        }
-        
-        // JS Arrow functions: const name = () =>
-        preg_match_all('/(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s*)?\([^)]*\)\s*=>/i', $code, $js_arrow_matches, PREG_OFFSET_CAPTURE);
-        foreach ($js_arrow_matches[1] as $match) {
-            $file_functions[] = [
-                'name' => $match[0],
-                'offset' => $match[1],
-                'type' => 'JS Arrow Function'
-            ];
-        }
-
-        // JS methods: methodName() {
-        preg_match_all('/(?<!function\s)\b([a-zA-Z0-9_]+)\s*\([^)]*\)\s*\{/i', $code, $js_method_matches, PREG_OFFSET_CAPTURE);
-        foreach ($js_method_matches[1] as $match) {
-            $func_name = $match[0];
-            if (in_array(strtolower($func_name), ['if', 'while', 'switch', 'for', 'catch', 'foreach', 'elseif'])) {
-                continue;
-            }
-            $already_added = false;
-            foreach ($file_functions as $f) {
-                if (abs($f['offset'] - $match[1]) < 20) {
-                    $already_added = true;
-                    break;
-                }
-            }
-            if (!$already_added) {
-                $file_functions[] = [
-                    'name' => $func_name,
-                    'offset' => $match[1],
-                    'type' => 'Method'
-                ];
-            }
-        }
-
-        // Sort by position
-        usort($file_functions, function($a, $b) {
-            return $a['offset'] - $b['offset'];
-        });
-
-        // Compute function details
-        $parsed_funcs = [];
-        foreach ($file_functions as $func) {
-            $body = getFunctionBody($code, $func['offset']);
-            $cc = calculateMcCabe($body);
-            
-            $pre_code = substr($code, 0, $func['offset']);
-            $start_line = count(explode("\n", $pre_code));
-            $body_lines = count(explode("\n", $body));
-            $end_line = $start_line + $body_lines - 1;
-
-            $parsed_funcs[] = [
-                'name' => $func['name'],
-                'file' => $fileName,
-                'start_line' => $start_line,
-                'end_line' => $end_line,
-                'complexity' => $cc,
-                'body' => $body
-            ];
-            $all_functions[] = $parsed_funcs[count($parsed_funcs)-1];
-        }
-
-        // If no functions found, treat the whole file as a single default main block
-        if (empty($parsed_funcs)) {
-            $cc = calculateMcCabe($clean_code);
-            $parsed_funcs[] = [
-                'name' => '(main script)',
-                'file' => $fileName,
-                'start_line' => 1,
-                'end_line' => $lines_count,
-                'complexity' => $cc,
-                'body' => $code
-            ];
-            $all_functions[] = $parsed_funcs[0];
-        }
-
-        // Calculate average complexity for this file
-        $file_cc_sum = 0;
-        foreach ($parsed_funcs as $pf) {
-            $file_cc_sum += $pf['complexity'];
-        }
-        $file_avg_cc = count($parsed_funcs) > 0 ? $file_cc_sum / count($parsed_funcs) : 1;
-
-        // Calculate Halstead metrics per file
-        $file_unique_ops = array_unique($file_operators);
-        $file_unique_ords = array_unique($file_operands);
-        
-        $fn1 = count($file_unique_ops);
-        $fn2 = count($file_unique_ords);
-        $fN1 = count($file_operators);
-        $fN2 = count($file_operands);
-        
-        $fN = $fN1 + $fN2;
-        $fn = $fn1 + $fn2;
-        $fV = $fN * ($fn > 0 ? log($fn, 2) : 0);
-        $fD = ($fn2 > 0) ? ($fn1 / 2) * ($fN2 / $fn2) : 0;
-        $fE = $fD * $fV;
-        $fB = $fV / 3000;
-
-        $files_report[] = [
-            'name' => $fileName,
-            'lines' => $lines_count,
-            'functions_count' => count($parsed_funcs),
-            'avg_complexity' => round($file_avg_cc, 1),
-            'operators_count' => count($file_operators),
-            'operands_count' => count($file_operands),
-            'volume' => round($fV, 2),
-            'difficulty' => round($fD, 2),
-            'bugs' => round($fB, 4)
-        ];
-    }
-
-    // Global Halstead metrics
-    $unique_ops = array_unique($total_n1);
-    $unique_ords = array_unique($total_n2);
-    
-    $n1 = count($unique_ops);
-    $n2 = count($unique_ords);
-    $N1 = $total_N1;
-    $N2 = $total_N2;
-
-    $N = $N1 + $N2;
-    $n = $n1 + $n2;
-    $V = $N * ($n > 0 ? log($n, 2) : 0);
-    $D = ($n2 > 0) ? ($n1 / 2) * ($N2 / $n2) : 0;
-    $E = $D * $V;
-    $T = $E / 18;
-    $B = $V / 3000;
-
-    $cc_sum = 0;
-    $high_risk_count = 0;
-    $cc_breakdown = [
-        'safe' => 0,
-        'moderate' => 0,
-        'high' => 0
-    ];
-
-    foreach ($all_functions as $f) {
-        $cc_sum += $f['complexity'];
-        if ($f['complexity'] <= 10) {
-            $cc_breakdown['safe']++;
-        } elseif ($f['complexity'] <= 20) {
-            $cc_breakdown['moderate']++;
-        } else {
-            $cc_breakdown['high']++;
-            $high_risk_count++;
-        }
-    }
-
-    $avg_complexity = count($all_functions) > 0 ? $cc_sum / count($all_functions) : 0;
-
-    return [
-        'total_files' => $total_files,
-        'total_functions' => count($all_functions),
-        'avg_complexity' => round($avg_complexity, 1),
-        'high_risk_functions' => $high_risk_count,
-        'lines' => $total_lines,
-        'n1' => $n1, 'n2' => $n2, 'N1' => $N1, 'N2' => $N2,
-        'N' => $N, 'n' => $n, 'V' => round($V, 2), 'D' => round($D, 2),
-        'E' => round($E, 2), 'T' => round($T, 2), 'B' => round($B, 4),
-        'unique_operators_list' => array_values($unique_ops),
-        'unique_operands_list' => array_values($unique_ords),
-        'functions' => $all_functions,
-        'files_report' => $files_report,
-        'cc_breakdown' => $cc_breakdown
-    ];
-}
+require_once 'lib/Analyzer.php';
 
 // Form Submission Handler
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -373,6 +82,21 @@ if ($results) {
                     fontFamily: {
                         sans: ['Outfit', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        cafe: {
+                            50: '#fcfaf7',
+                            100: '#f5efe6',
+                            200: '#e6d5c3',
+                            300: '#cbb29b',
+                            400: '#ab886d',
+                            500: '#8c6239',
+                            600: '#6f4e37',
+                            700: '#5c3d2e',
+                            800: '#432c23',
+                            900: '#2b1b17',
+                            950: '#120b08',
+                        }
                     }
                 }
             }
@@ -381,12 +105,12 @@ if ($results) {
     <!-- Custom Vanilla CSS for Premium Theme & Effects -->
     <style>
         body {
-            background-color: #050814;
-            color: #f3f4f6;
+            background-color: #030303;
+            color: #e5e5e5;
             background-image: 
-                radial-gradient(circle at 50% -10%, rgba(20, 184, 166, 0.12) 0%, transparent 60%),
-                linear-gradient(rgba(20, 184, 166, 0.015) 1px, transparent 1px), 
-                linear-gradient(90deg, rgba(20, 184, 166, 0.015) 1px, transparent 1px);
+                radial-gradient(circle at 50% -10%, rgba(232, 31, 37, 0.12) 0%, transparent 65%),
+                linear-gradient(rgba(255, 255, 255, 0.006) 1px, transparent 1px), 
+                linear-gradient(90deg, rgba(255, 255, 255, 0.006) 1px, transparent 1px);
             background-size: auto, 32px 32px, 32px 32px;
             overflow-x: hidden;
         }
@@ -436,23 +160,25 @@ if ($results) {
 
         /* Glassmorphism Classes */
         .glass-card {
-            background: rgba(10, 15, 30, 0.6);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(20, 184, 166, 0.06);
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(232, 31, 37, 0.08);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.65);
         }
 
         .glass-nav {
-            background: rgba(5, 8, 20, 0.8);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(20, 184, 166, 0.08);
+            background: rgba(4, 4, 4, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(232, 31, 37, 0.12);
+            box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.9);
         }
 
         /* Custom Drag and Drop Hover Effect */
         .dropzone-hover {
-            border-color: #06b6d4 !important;
-            background: rgba(6, 182, 212, 0.06) !important;
+            border-color: #e81f25 !important;
+            background: rgba(232, 31, 37, 0.05) !important;
         }
 
         /* Printing adjustments to make a clean minimalist report */
@@ -472,13 +198,13 @@ if ($results) {
                 backdrop-filter: none !important;
                 color: black !important;
             }
-            .text-white, .text-slate-200, .text-slate-300 {
+            .text-white, .text-neutral-200, .text-neutral-300 {
                 color: #111827 !important;
             }
-            .text-slate-400, .text-slate-500 {
+            .text-neutral-500, .text-neutral-550 {
                 color: #4b5563 !important;
             }
-            .border-slate-800 {
+            .border-neutral-800 {
                 border-color: #e5e7eb !important;
             }
             .results-tab-panel {
@@ -490,28 +216,28 @@ if ($results) {
         }
     </style>
 </head>
-<body class="min-h-screen relative antialiased selection:bg-teal-500/30 selection:text-teal-200">
+<body class="min-h-screen relative antialiased selection:bg-red-600/30 selection:text-white">
 
     <!-- Decorative Glow Spheres (Teal & Cyan accents) -->
-    <div class="glow-sphere w-[500px] h-[500px] bg-teal-500 top-[-100px] left-[-100px]"></div>
-    <div class="glow-sphere w-[500px] h-[500px] bg-cyan-500 bottom-[100px] right-[-100px]"></div>
+    <div class="glow-sphere w-[500px] h-[500px] bg-[#050505]0 top-[-100px] left-[-100px]"></div>
+    <div class="glow-sphere w-[500px] h-[500px] bg-neutral-800 bottom-[100px] right-[-100px]"></div>
 
     <!-- Navigation Header -->
     <nav class="glass-nav sticky top-0 z-50 transition-all duration-300 no-print">
         <div class="max-w-[1600px] mx-auto px-6 lg:px-10">
             <div class="flex justify-between h-16 items-center">
                 <div class="flex items-center space-x-2.5 cursor-pointer" onclick="switchMainTab('home')">
-                    <div class="w-9 h-9 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg flex items-center justify-center text-white font-mono font-bold text-sm shadow-md shadow-teal-500/20">
+                    <div class="w-9 h-9 bg-gradient-to-br from-red-600 to-red-400 rounded-lg flex items-center justify-center text-white font-mono font-bold text-sm shadow-md shadow-red-600/10">
                         [C•P]
                     </div>
-                    <span class="text-lg font-bold text-white tracking-tight font-sans">CodePulse<span class="text-teal-400 font-light">.io</span></span>
+                    <span class="text-lg font-bold text-white tracking-tight font-sans">CodePulse<span class="text-red-500 font-light">.io</span></span>
                 </div>
                 <div class="flex items-center space-x-6">
                     <button onclick="switchMainTab('home')" id="nav-home" class="text-sm font-semibold transition-colors duration-200">Overview</button>
                     <button onclick="switchMainTab('analyzer')" id="nav-analyzer" class="text-sm font-semibold transition-colors duration-200">Analyzer Console</button>
-                    <button onclick="switchMainTab('home'); setTimeout(() => document.getElementById('how-it-works').scrollIntoView({behavior: 'smooth'}), 150)" class="text-sm font-semibold text-slate-400 hover:text-white transition duration-200">Docs</button>
+                    <button onclick="switchMainTab('home'); setTimeout(() => document.getElementById('how-it-works').scrollIntoView({behavior: 'smooth'}), 150)" class="text-sm font-semibold text-neutral-500 hover:text-white transition duration-200">Docs</button>
                     <div class="h-4 w-[1px] bg-slate-800"></div>
-                    <button onclick="switchMainTab('analyzer')" class="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-500 text-xs font-semibold rounded-lg text-white transition duration-200 shadow-md shadow-teal-600/20">
+                    <button onclick="switchMainTab('analyzer')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-[#050505]0 text-xs font-semibold rounded-lg text-white transition duration-200 shadow-md shadow-red-600/10">
                         Start Analyzer
                     </button>
                 </div>
@@ -525,23 +251,23 @@ if ($results) {
         <!-- ==================== VIEW: HOME ==================== -->
         <div id="main-view-home" class="main-tab-content active">
             <div class="text-center max-w-3xl mx-auto mb-16 mt-12">
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-400 border border-teal-500/20 uppercase tracking-wider mb-6">
-                    <span class="w-1.5 h-1.5 rounded-full bg-teal-400 mr-2 animate-pulse"></span>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#050505]0/10 text-red-500 border border-neutral-800 uppercase tracking-wider mb-6">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 mr-2 animate-pulse"></span>
                     Software Quality Metrics
                 </span>
                 <h1 class="text-4xl font-extrabold tracking-tight mt-3 mb-6 sm:text-6xl text-white">
                     Ukur Kualitas Kode dengan <br>
-                    <span class="bg-gradient-to-r from-teal-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">Halstead & McCabe Metrics</span>
+                    <span class="bg-gradient-to-r from-red-600 via-neutral-100 to-red-500 bg-clip-text text-transparent">Halstead & McCabe Metrics</span>
                 </h1>
-                <p class="text-lg text-slate-400 leading-relaxed max-w-2xl mx-auto">
+                <p class="text-lg text-neutral-500 leading-relaxed max-w-2xl mx-auto">
                     Ketahui tingkat kesulitan logika, beban kognitif (effort), estimasi bug, hingga kompleksitas percabangan program menggunakan analisis statis formal terpadu.
                 </p>
                 <div class="mt-10 flex justify-center gap-4">
-                    <button onclick="switchMainTab('analyzer')" class="inline-flex items-center px-6 py-3.5 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 shadow-lg shadow-teal-600/25 transition duration-300 transform hover:-translate-y-0.5">
+                    <button onclick="switchMainTab('analyzer')" class="inline-flex items-center px-6 py-3.5 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 shadow-lg shadow-red-600/10 transition duration-300 transform hover:-translate-y-0.5">
                         Mulai Menganalisis
                         <svg class="ml-2 -mr-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
                     </button>
-                    <button onclick="document.getElementById('how-it-works').scrollIntoView({behavior: 'smooth'})" class="inline-flex items-center px-6 py-3.5 rounded-xl text-sm font-semibold text-slate-350 hover:text-white border border-slate-800 hover:border-slate-700 transition duration-300">
+                    <button onclick="document.getElementById('how-it-works').scrollIntoView({behavior: 'smooth'})" class="inline-flex items-center px-6 py-3.5 rounded-xl text-sm font-semibold text-neutral-300 hover:text-white border border-neutral-800 hover:border-slate-700 transition duration-300">
                         Pelajari Parameter
                     </button>
                 </div>
@@ -549,30 +275,30 @@ if ($results) {
 
             <!-- Highlights -->
             <div id="how-it-works" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-                <div class="glass-card p-6 rounded-2xl transition duration-300 hover:scale-[1.02] hover:border-teal-500/25">
-                    <div class="w-11 h-11 bg-teal-500/10 rounded-xl flex items-center justify-center text-teal-400 mb-5 border border-teal-500/20">
+                <div class="glass-card p-6 rounded-2xl transition duration-300 hover:scale-[1.02] hover:border-slate-600/25">
+                    <div class="w-11 h-11 bg-[#050505]0/10 rounded-xl flex items-center justify-center text-red-500 mb-5 border border-neutral-800">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                     </div>
                     <h3 class="text-base font-bold text-white mb-2">1. Tokenizing (Halstead)</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
+                    <p class="text-xs text-neutral-500 leading-relaxed">
                         Kode program dipecah menjadi <strong>Operator</strong> (kata kunci, operator aritmatika/logika, tanda baca) dan <strong>Operand</strong> (nama variabel, nilai konstanta, literal string).
                     </p>
                 </div>
-                <div class="glass-card p-6 rounded-2xl transition duration-300 hover:scale-[1.02] hover:border-cyan-500/25">
-                    <div class="w-11 h-11 bg-cyan-500/10 rounded-xl flex items-center justify-center text-cyan-400 mb-5 border border-cyan-500/20">
+                <div class="glass-card p-6 rounded-2xl transition duration-300 hover:scale-[1.02] hover:border-red-500/20">
+                    <div class="w-11 h-11 bg-neutral-800/10 rounded-xl flex items-center justify-center text-neutral-550 mb-5 border border-neutral-800">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                     </div>
                     <h3 class="text-base font-bold text-white mb-2">2. Cyclomatic Complexity (McCabe)</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
+                    <p class="text-xs text-neutral-500 leading-relaxed">
                         Mengukur jumlah jalur eksekusi independen secara linier melalui grafik alir kontrol kode untuk mengidentifikasi tingkat kerumitan percabangan dan perulangan.
                     </p>
                 </div>
-                <div class="glass-card p-6 rounded-2xl transition duration-300 hover:scale-[1.02] hover:border-emerald-500/25">
-                    <div class="w-11 h-11 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400 mb-5 border border-emerald-500/20">
+                <div class="glass-card p-6 rounded-2xl transition duration-300 hover:scale-[1.02] hover:border-red-500/25">
+                    <div class="w-11 h-11 bg-[#050505]0/15 rounded-xl flex items-center justify-center text-red-500 mb-5 border border-slate-500/20">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                     </div>
                     <h3 class="text-base font-bold text-white mb-2">3. Cognitive Load & Bugs</h3>
-                    <p class="text-xs text-slate-400 leading-relaxed">
+                    <p class="text-xs text-neutral-500 leading-relaxed">
                         Memproyeksikan usaha mental ($E$) programmer untuk menyelesaikan kode ini, estimasi waktu ($T$) pemahaman, dan prediksi jumlah potensi bug ($B$) bawaan.
                     </p>
                 </div>
@@ -584,19 +310,19 @@ if ($results) {
             
             <div class="mb-6">
                 <h1 class="text-2xl font-extrabold text-white tracking-tight flex items-center">
-                    <span class="mr-2.5 px-2.5 py-1.5 bg-teal-500/10 border border-teal-500/20 rounded-xl text-teal-400 text-sm">⚙️</span> Analyzer Console
+                    <span class="mr-2.5 px-2.5 py-1.5 bg-[#050505]0/10 border border-neutral-800 rounded-xl text-red-500 text-sm">⚙️</span> Analyzer Console
                 </h1>
-                <p class="text-xs text-slate-400 mt-1">Masukkan kode sumber Anda di bawah ini melalui metode paste, berkas tunggal, atau seluruh folder proyek.</p>
+                <p class="text-xs text-neutral-500 mt-1">Masukkan kode sumber Anda di bawah ini melalui metode paste, berkas tunggal, atau seluruh folder proyek.</p>
             </div>
 
             <!-- Full Width Input Interface (lg:grid-cols-12 layout) -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
                 <!-- Form Box: Span 8 (2/3 width) -->
-                <div class="lg:col-span-8 glass-card rounded-2xl p-6 shadow-xl border border-slate-800/80">
+                <div class="lg:col-span-8 glass-card rounded-2xl p-6 shadow-xl border border-neutral-800">
                     
                     <!-- Form Tabs switcher -->
-                    <div class="flex bg-slate-950/80 p-1.5 rounded-xl mb-6 text-xs font-semibold border border-slate-900 max-w-sm">
+                    <div class="flex bg-neutral-900/20/80 p-1.5 rounded-xl mb-6 text-xs font-semibold border border-neutral-800 max-w-sm">
                         <button type="button" onclick="switchInputMode('paste')" id="tab-input-paste" class="flex-1 py-2.5 text-center rounded-lg transition-all duration-200">Paste Code</button>
                         <button type="button" onclick="switchInputMode('file')" id="tab-input-file" class="flex-1 py-2.5 text-center rounded-lg transition-all duration-200">File Upload</button>
                         <button type="button" onclick="switchInputMode('folder')" id="tab-input-folder" class="flex-1 py-2.5 text-center rounded-lg transition-all duration-200">Folder Upload</button>
@@ -609,45 +335,45 @@ if ($results) {
                         <!-- Paste Section -->
                         <div id="panel-input-paste" class="input-panel">
                             <div class="flex justify-between items-center mb-2">
-                                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tempel Kode Sumber:</label>
-                                <span class="text-[10px] text-slate-500">Mendukung PHP, JS, HTML</span>
+                                <label class="text-xs font-bold text-neutral-500 uppercase tracking-wider">Tempel Kode Sumber:</label>
+                                <span class="text-[10px] text-neutral-550">Mendukung PHP, JS, HTML</span>
                             </div>
-                            <textarea id="code" name="code" rows="22" class="w-full p-4 font-mono text-[11px] border border-slate-800/60 rounded-xl focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500/80 bg-slate-950/90 text-slate-350 outline-none transition duration-200 min-h-[420px]" placeholder="Paste kode program Anda di sini untuk memulai penghitungan..."><?php echo htmlspecialchars($inputType === 'paste' ? $code_input : ''); ?></textarea>
+                            <textarea id="code" name="code" rows="22" class="w-full p-4 font-mono text-[11px] border border-neutral-800/60 rounded-xl focus:ring-2 focus:ring-teal-500/50 focus:border-slate-500/80 bg-neutral-950 text-neutral-100 border-neutral-800/80 outline-none transition duration-200 min-h-[420px]" placeholder="Paste kode program Anda di sini untuk memulai penghitungan..."><?php echo htmlspecialchars($inputType === 'paste' ? $code_input : ''); ?></textarea>
                         </div>
 
                         <!-- File Upload Section (Full Width drag zones) -->
                         <div id="panel-input-file" class="input-panel">
-                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Pilih File (.php / .js / .html):</label>
-                            <div id="dropzone-file" class="border-2 border-dashed border-slate-800 rounded-xl py-24 px-8 text-center bg-slate-950/20 hover:bg-slate-950/80 hover:border-teal-500/40 transition duration-300 cursor-pointer relative group min-h-[280px] flex flex-col justify-center items-center">
+                            <label class="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">Pilih File (.php / .js / .html):</label>
+                            <div id="dropzone-file" class="border-2 border-dashed border-neutral-800 rounded-xl py-24 px-8 text-center bg-neutral-900/20 hover:bg-neutral-900/80 hover:border-red-500/30 transition duration-300 cursor-pointer relative group min-h-[280px] flex flex-col justify-center items-center">
                                 <input type="file" id="file-input-control" name="single_file" accept=".php,.js,.html" class="absolute inset-0 opacity-0 cursor-pointer">
                                 <div class="space-y-4 pointer-events-none">
-                                    <div class="text-5xl text-slate-500 group-hover:text-teal-400 transition-colors duration-300">📄</div>
-                                    <p class="text-sm font-semibold text-slate-350" id="file-display-name">Drag & Drop file Anda di sini, atau cari dari komputer</p>
-                                    <p class="text-xs text-slate-500">Mendukung format berkas .php, .js, .html</p>
+                                    <div class="text-5xl text-neutral-550 group-hover:text-red-500 transition-colors duration-300">📄</div>
+                                    <p class="text-sm font-semibold text-neutral-300" id="file-display-name">Drag & Drop file Anda di sini, atau cari dari komputer</p>
+                                    <p class="text-xs text-neutral-550">Mendukung format berkas .php, .js, .html</p>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Folder Upload Section -->
                         <div id="panel-input-folder" class="input-panel">
-                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Pilih Folder Proyek Web:</label>
-                            <div id="dropzone-folder" class="border-2 border-dashed border-slate-800 rounded-xl py-24 px-8 text-center bg-slate-950/20 hover:bg-slate-950/80 hover:border-teal-500/40 transition duration-300 cursor-pointer relative group min-h-[280px] flex flex-col justify-center items-center">
+                            <label class="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">Pilih Folder Proyek Web:</label>
+                            <div id="dropzone-folder" class="border-2 border-dashed border-neutral-800 rounded-xl py-24 px-8 text-center bg-neutral-900/20 hover:bg-neutral-900/80 hover:border-red-500/30 transition duration-300 cursor-pointer relative group min-h-[280px] flex flex-col justify-center items-center">
                                 <input type="file" id="folder-input-control" name="folder_files[]" webkitdirectory directory multiple class="absolute inset-0 opacity-0 cursor-pointer">
                                 <div class="space-y-4 pointer-events-none">
-                                    <div class="text-5xl text-slate-500 group-hover:text-teal-400 transition-colors duration-300">📁</div>
-                                    <p class="text-sm font-semibold text-slate-355" id="folder-display-name">Drag & Drop folder proyek Anda di sini, atau cari folder</p>
-                                    <p class="text-xs text-slate-500">Sistem akan otomatis menggabungkan seluruh file .php, .js, dan .html di dalamnya</p>
+                                    <div class="text-5xl text-neutral-550 group-hover:text-red-500 transition-colors duration-300">📁</div>
+                                    <p class="text-sm font-semibold text-neutral-300" id="folder-display-name">Drag & Drop folder proyek Anda di sini, atau cari folder</p>
+                                    <p class="text-xs text-neutral-550">Sistem akan otomatis menggabungkan seluruh file .php, .js, dan .html di dalamnya</p>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Actions row -->
                         <div class="flex gap-3">
-                            <button type="submit" class="flex-1 py-3.5 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white font-bold text-sm rounded-xl transition duration-300 shadow-lg shadow-teal-600/15 active:scale-[0.99] flex items-center justify-center gap-2">
-                                <span>💥</span> Jalankan Analisis Kode
+                            <button type="submit" class="flex-1 py-3.5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-bold text-sm rounded-xl transition duration-300 shadow-lg shadow-red-600/10 active:scale-[0.99] flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-0.5"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg> Jalankan Analisis Kode
                               </button>
-                            <button type="button" onclick="resetCalculator()" class="px-4 py-3.5 border border-slate-800 hover:bg-slate-900 text-slate-450 hover:text-white rounded-xl transition duration-200" title="Bersihkan input">
-                                🗑️ Clear
+                            <button type="button" onclick="resetCalculator()" class="px-4 py-3.5 border border-neutral-800 hover:bg-slate-900 text-slate-450 hover:text-white rounded-xl transition duration-200" title="Bersihkan input">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-1"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg> Clear
                             </button>
                         </div>
                     </form>
@@ -657,33 +383,37 @@ if ($results) {
                 <div class="lg:col-span-4 space-y-6 instructions-container">
                     
                     <!-- Direct Downloads Box -->
-                    <div class="glass-card rounded-2xl p-6 border border-slate-800/80">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center">
-                             <span class="mr-2">📥</span> File Uji Coba Cepat
+                    <div class="glass-card rounded-2xl p-6 border border-neutral-800">
+                        <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 flex items-center">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg> File Uji Coba Cepat
                         </h3>
-                        <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+                        <p class="text-xs text-neutral-500 mb-4 leading-relaxed">
                             Unduh file pengujian di bawah ini langsung ke komputer Anda untuk mengetes fitur upload file:
                         </p>
                         <div class="flex flex-col gap-2">
-                            <a href="test-upload.js" download="test-upload.js" class="flex items-center justify-between px-4 py-3 bg-slate-950 hover:bg-slate-900 border border-slate-850 hover:border-teal-500/25 rounded-xl text-xs font-semibold text-slate-350 hover:text-white transition duration-200">
+                            <a href="tests/samples/test-upload.js" download="test-upload.js" class="flex items-center justify-between px-4 py-3 bg-neutral-900/20 hover:bg-slate-900 border border-neutral-800 hover:border-slate-600/25 rounded-xl text-xs font-semibold text-neutral-300 hover:text-white transition duration-200">
                                 <span>JavaScript Sample (`.js`)</span>
-                                <span class="text-teal-400 font-mono text-[10px]">Unduh 📥</span>
+                                <span class="text-red-500 font-mono text-[10px]">Unduh <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline ml-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg></span>
                             </a>
-                            <a href="test-upload-php.txt" download="test-upload.php" class="flex items-center justify-between px-4 py-3 bg-slate-950 hover:bg-slate-900 border border-slate-850 hover:border-teal-500/25 rounded-xl text-xs font-semibold text-slate-355 hover:text-white transition duration-200">
-                                <span>PHP Sample (`.php`)</span>
-                                <span class="text-teal-400 font-mono text-[10px]">Unduh 📥</span>
+                            <a href="tests/samples/test-upload-php.txt" download="test-upload.php" class="flex items-center justify-between px-4 py-3 bg-neutral-900/20 hover:bg-slate-900 border border-neutral-800 hover:border-slate-600/25 rounded-xl text-xs font-semibold text-neutral-300 hover:text-white transition duration-200">
+                                <span>PHP Object Sample (`.php`)</span>
+                                <span class="text-red-500 font-mono text-[10px]">Unduh <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline ml-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg></span>
+                            </a>
+                            <a href="tests/samples/ProductController-php.txt" download="ProductController.php" class="flex items-center justify-between px-4 py-3 bg-neutral-900/20 hover:bg-slate-900 border border-neutral-800 hover:border-slate-600/25 rounded-xl text-xs font-semibold text-neutral-300 hover:text-white transition duration-200">
+                                <span>Laravel Controller Sample (`.php`)</span>
+                                <span class="text-red-500 font-mono text-[10px]">Unduh <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline ml-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg></span>
                             </a>
                         </div>
                     </div>
 
                     <!-- Steps Guide Box -->
-                    <div class="glass-card rounded-2xl p-6 border border-slate-800/80">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center">
-                            <span class="mr-2">💡</span> Petunjuk Cara Pengujian
+                    <div class="glass-card rounded-2xl p-6 border border-neutral-800">
+                        <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-4 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 mr-2"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A7 7 0 0 0 4 8c0 1 .3 2.2 1.3 3.1.7.8 1.2 1.5 1.7 2.4"></path><path d="M9 18h6"></path><path d="M10 22h4"></path></svg> Petunjuk Cara Pengujian
                         </h3>
-                        <div class="space-y-4 text-xs text-slate-400">
+                        <div class="space-y-4 text-xs text-neutral-500">
                             <div>
-                                <p class="font-semibold text-teal-400 mb-1">A. Uji Coba Upload File:</p>
+                                <p class="font-semibold text-red-500 mb-1">A. Uji Coba Upload File:</p>
                                 <ol class="list-decimal pl-4 space-y-1 leading-relaxed">
                                     <li>Klik salah satu tombol unduh file di atas.</li>
                                     <li>Pilih tab **"File Upload"** di sebelah kiri.</li>
@@ -691,12 +421,12 @@ if ($results) {
                                     <li>Klik **"Jalankan Analisis Kode"**.</li>
                                 </ol>
                             </div>
-                            <div class="border-t border-slate-800/50 pt-3">
-                                <p class="font-semibold text-teal-400 mb-1">B. Uji Coba Upload Folder:</p>
+                            <div class="border-t border-neutral-800/40 pt-3">
+                                <p class="font-semibold text-red-500 mb-1">B. Uji Coba Upload Folder:</p>
                                 <ol class="list-decimal pl-4 space-y-1 leading-relaxed">
                                     <li>Pilih tab **"Folder Upload"** di sebelah kiri.</li>
                                     <li>Klik dropzone folder.</li>
-                                    <li>Arahkan dan pilih direktori bernama <code class="bg-slate-950 px-1 py-0.5 rounded text-teal-300 font-mono">samples/</code> di dalam folder proyek Anda.</li>
+                                    <li>Arahkan dan pilih direktori bernama <code class="bg-neutral-900/20 px-1 py-0.5 rounded text-red-500 font-mono">samples/</code> di dalam folder proyek Anda.</li>
                                     <li>Setujui dialog konfirmasi upload di browser Anda.</li>
                                     <li>Klik **"Jalankan Analisis Kode"**.</li>
                                 </ol>
@@ -717,34 +447,34 @@ if ($results) {
                     <div>
                         <!-- Navigation actions -->
                         <div class="flex items-center space-x-2 mb-2 action-buttons">
-                            <button onclick="switchMainTab('analyzer')" class="px-3 py-1.5 text-xs font-semibold text-slate-350 hover:text-white border border-slate-800/80 bg-[#050814] rounded-lg transition duration-200">
+                            <button onclick="switchMainTab('analyzer')" class="px-3 py-1.5 text-xs font-semibold text-neutral-300 hover:text-white border border-neutral-800 bg-[#050505] rounded-lg transition duration-200">
                                 &larr; Back to Analyzer
                             </button>
-                            <button onclick="window.location.href = window.location.pathname;" class="px-3 py-1.5 text-xs font-semibold text-slate-355 hover:text-white border border-slate-800/80 bg-[#050814] rounded-lg transition duration-200">
+                            <button onclick="window.location.href = window.location.pathname;" class="px-3 py-1.5 text-xs font-semibold text-neutral-300 hover:text-white border border-neutral-800 bg-[#050505] rounded-lg transition duration-200">
                                 Refresh
                             </button>
                         </div>
                         <!-- Program Title info -->
                         <h1 class="text-2xl font-bold text-white tracking-tight flex items-center">
-                            <?php echo $analysis_source; ?> <span class="mx-2 text-slate-700 font-normal">&middot;</span> <span id="live-clock" class="text-slate-400 font-normal text-lg"><?php echo date('n/j/Y, g:i:s A'); ?></span>
+                            <?php echo $analysis_source; ?> <span class="mx-2 text-red-500 font-normal">&middot;</span> <span id="live-clock" class="text-neutral-500 font-normal text-lg"><?php echo date('n/j/Y, g:i:s A'); ?></span>
                         </h1>
-                        <p class="text-[11px] text-slate-500 mt-1">Print PDF exports only the data tables (Functions &amp; Files) in a clean minimalist format.</p>
+                        <p class="text-[11px] text-neutral-550 mt-1">Print PDF exports only the data tables (Functions &amp; Files) in a clean minimalist format.</p>
                     </div>
 
                     <!-- Right buttons (Matching colors exactly) -->
                     <div class="flex items-center space-x-2 action-buttons">
-                        <button onclick="window.print()" class="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 rounded-lg shadow-md shadow-teal-500/10 transition duration-200 flex items-center gap-1.5">
+                        <button onclick="window.print()" class="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 rounded-lg shadow-md shadow-indigo-500/5 transition duration-200 flex items-center gap-1.5">
                             Print PDF
                         </button>
-                        <button onclick="exportToCSV()" class="px-4 py-2 text-xs font-bold text-teal-400 hover:text-teal-300 border border-teal-950 hover:border-teal-800 bg-[#050814] hover:bg-slate-900 rounded-lg transition duration-200 flex items-center gap-1.5">
+                        <button onclick="exportToCSV()" class="px-4 py-2 text-xs font-bold text-red-500 hover:text-red-500 border border-indigo-200 hover:border-neutral-800 bg-[#050505] hover:bg-slate-900 rounded-lg transition duration-200 flex items-center gap-1.5">
                             Export Excel
                         </button>
                     </div>
                 </div>
 
                 <!-- Custom Navigation Tabs bar (Matches KodeMetrik tabs) -->
-                <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center border-b border-slate-900 mb-6 gap-4 no-print">
-                    <div class="flex flex-wrap bg-slate-950 p-1.5 rounded-xl border border-slate-800/80 mb-[-1px] text-xs font-semibold gap-1">
+                <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center border-b border-neutral-800 mb-6 gap-4 no-print">
+                    <div class="flex flex-wrap bg-neutral-900/20 p-1.5 rounded-xl border border-neutral-800 mb-[-1px] text-xs font-semibold gap-1">
                         <button onclick="switchResultsTab('overview')" id="res-tab-overview" class="flex items-center gap-1.5 px-4 py-2 rounded-lg transition-all duration-200">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z"></path></svg>
                             Overview
@@ -768,8 +498,8 @@ if ($results) {
                         <button onclick="switchResultsTab('tokens')" id="res-tab-tokens" class="px-4 py-2 rounded-lg transition-all duration-200">Parsed Tokens</button>
                         <button onclick="switchResultsTab('source')" id="res-tab-source" class="px-4 py-2 rounded-lg transition-all duration-200">Source Code</button>
                     </div>
-                    <div class="text-[9px] font-mono text-slate-650 tracking-widest uppercase py-2">
-                        CLIENT STATIC AST PIPELINE <span class="text-teal-400 font-bold">DONE</span>
+                    <div class="text-[9px] font-mono text-neutral-550 tracking-widest uppercase py-2">
+                        CLIENT STATIC AST PIPELINE <span class="text-red-500 font-bold">DONE</span>
                     </div>
                 </div>
 
@@ -780,56 +510,56 @@ if ($results) {
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                         
                         <!-- Card 1: TOTAL FILES -->
-                        <div class="glass-card p-5 rounded-2xl border-l-4 border-l-teal-500 hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]">
+                        <div class="glass-card p-5 rounded-2xl border-l-4 border-l-red-600 hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]">
                             <div>
-                                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider mb-2">TOTAL FILES</span>
+                                <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-2">TOTAL FILES</span>
                                 <div class="mt-1 inline-block">
-                                    <span class="text-2xl font-extrabold text-white font-mono bg-slate-950/60 px-2.5 py-1 rounded-xl border border-slate-900/50 shadow-inner"><?php echo $results['total_files']; ?></span>
+                                    <span class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo $results['total_files']; ?></span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Card 2: TOTAL FUNCTIONS -->
-                        <div class="glass-card p-5 rounded-2xl border-l-4 border-l-emerald-500 hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]">
+                        <div class="glass-card p-5 rounded-2xl border-l-4 border-l-red-500 hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]">
                             <div>
-                                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider mb-2">TOTAL FUNCTIONS</span>
+                                <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-2">TOTAL FUNCTIONS</span>
                                 <div class="mt-1 inline-block">
-                                    <span class="text-2xl font-extrabold text-white font-mono bg-slate-950/60 px-2.5 py-1 rounded-xl border border-slate-900/50 shadow-inner"><?php echo $results['total_functions']; ?></span>
+                                    <span class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo $results['total_functions']; ?></span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Card 3: AVERAGE COMPLEXITY -->
-                        <div class="glass-card p-5 rounded-2xl border-l-4 border-l-cyan-500 hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]">
+                        <div class="glass-card p-5 rounded-2xl border-l-4 border-l-neutral-700 hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]">
                             <div>
-                                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider mb-2">AVERAGE COMPLEXITY</span>
+                                <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-2">AVERAGE COMPLEXITY</span>
                                 <div class="mt-1 inline-block">
-                                    <span class="text-2xl font-extrabold text-white font-mono bg-slate-950/60 px-2.5 py-1 rounded-xl border border-slate-900/50 shadow-inner"><?php echo number_format($results['avg_complexity'], 1); ?></span>
+                                    <span class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo number_format($results['avg_complexity'], 1); ?></span>
                                 </div>
                             </div>
-                            <span class="text-[10px] text-slate-500 block mt-2">Average linear branch complexity</span>
+                            <span class="text-[10px] text-neutral-550 block mt-2">Average linear branch complexity</span>
                         </div>
 
                         <!-- Card 4: HIGH RISK FUNCTIONS -->
                         <div class="glass-card p-5 rounded-2xl border-l-4 border-l-amber-500 hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]">
                             <div>
-                                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider mb-2">HIGH RISK FUNCTIONS</span>
+                                <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-2">HIGH RISK FUNCTIONS</span>
                                 <div class="mt-1 inline-block">
-                                    <span class="text-2xl font-extrabold text-white font-mono bg-slate-950/60 px-2.5 py-1 rounded-xl border border-slate-900/50 shadow-inner"><?php echo $results['high_risk_functions']; ?></span>
+                                    <span class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo $results['high_risk_functions']; ?></span>
                                 </div>
                             </div>
-                            <span class="text-[10px] text-slate-500 block mt-2">Complexity status = high</span>
+                            <span class="text-[10px] text-neutral-550 block mt-2">Complexity status = high</span>
                         </div>
 
                         <!-- Card 5: ESTIMATED BUGS -->
                         <div class="glass-card p-5 rounded-2xl border-l-4 border-l-rose-500 hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]">
                             <div>
-                                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider mb-2">ESTIMATED BUGS</span>
+                                <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-2">ESTIMATED BUGS</span>
                                 <div class="mt-1 inline-block">
-                                    <span class="text-2xl font-extrabold text-white font-mono bg-slate-950/60 px-2.5 py-1 rounded-xl border border-slate-900/50 shadow-inner"><?php echo number_format($results['B'], 3); ?></span>
+                                    <span class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo number_format($results['B'], 3); ?></span>
                                 </div>
                             </div>
-                            <span class="text-[10px] text-slate-500 block mt-2">Mathematical Halstead bug...</span>
+                            <span class="text-[10px] text-neutral-550 block mt-2">Mathematical Halstead bug...</span>
                         </div>
 
                         <!-- Card 6: GLOBAL RATING -->
@@ -852,15 +582,15 @@ if ($results) {
                         ?>
                         <div class="glass-card p-5 rounded-2xl border-l-4 <?php echo $rating_border; ?> hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]">
                             <div>
-                                <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider mb-1">GLOBAL RATING</span>
+                                <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-1">GLOBAL RATING</span>
                                 <div class="mt-1 inline-block">
-                                    <span class="text-xl font-extrabold font-mono <?php echo $rating_color; ?> flex items-center gap-2 bg-slate-950/60 px-2.5 py-1 rounded-xl border border-slate-900/50 shadow-inner">
+                                    <span class="text-xl font-extrabold font-mono <?php echo $rating_color; ?> flex items-center gap-2 bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner">
                                         <span class="w-2.5 h-2.5 rounded-full <?php echo $rating_dot; ?> inline-block animate-pulse"></span>
                                         <?php echo $rating; ?>
                                     </span>
                                 </div>
                             </div>
-                            <span class="text-[10px] text-slate-500 block mt-2">Based on average linear branch counts</span>
+                            <span class="text-[10px] text-neutral-550 block mt-2">Based on average linear branch counts</span>
                         </div>
                     </div>
 
@@ -868,11 +598,11 @@ if ($results) {
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 print-grid">
                         
                         <!-- Left card: Complexity Breakdown (5 columns) -->
-                        <div class="lg:col-span-5 glass-card rounded-2xl p-6 border border-slate-800/80">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 pb-2 border-b border-slate-800/60">
+                        <div class="lg:col-span-5 glass-card rounded-2xl p-6 border border-neutral-800">
+                            <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-6 pb-2 border-b border-neutral-800/60">
                                 COMPLEXITY BREAKDOWN
                             </h3>
-                            <p class="text-xs text-slate-500 mb-6">Function distribution based on safety levels.</p>
+                            <p class="text-xs text-neutral-550 mb-6">Function distribution based on safety levels.</p>
                             
                             <?php
                                 $safe_count = $results['cc_breakdown']['safe'];
@@ -887,59 +617,59 @@ if ($results) {
                              <div class="space-y-6">
                                 <div>
                                     <div class="flex justify-between text-xs font-semibold mb-2">
-                                        <span class="text-teal-400">Simple &amp; Safe (CC &le; 10)</span>
-                                        <span class="text-white font-mono bg-slate-950/80 px-2 py-0.5 rounded border border-slate-900/60 shadow-inner"><?php echo $safe_count; ?></span>
+                                        <span class="text-red-500">Simple &amp; Safe (CC &le; 10)</span>
+                                        <span class="text-white font-mono bg-neutral-900/20/80 px-2 py-0.5 rounded border border-neutral-800/60 shadow-inner"><?php echo $safe_count; ?></span>
                                     </div>
-                                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-900 shadow-inner">
-                                        <div class="bg-gradient-to-r from-teal-500 to-cyan-500 h-full rounded-full" style="width: <?php echo $safe_pct; ?>%"></div>
+                                    <div class="w-full bg-neutral-900/20 h-2 rounded-full overflow-hidden border border-neutral-800 shadow-inner">
+                                        <div class="bg-gradient-to-r from-red-600 to-red-400 h-full rounded-full" style="width: <?php echo $safe_pct; ?>%"></div>
                                     </div>
                                 </div>
                                 <div>
                                     <div class="flex justify-between text-xs font-semibold mb-2">
                                         <span class="text-amber-400">Moderate Risk (CC 11-20)</span>
-                                        <span class="text-white font-mono bg-slate-950/80 px-2 py-0.5 rounded border border-slate-900/60 shadow-inner"><?php echo $mod_count; ?></span>
+                                        <span class="text-white font-mono bg-neutral-900/20/80 px-2 py-0.5 rounded border border-neutral-800/60 shadow-inner"><?php echo $mod_count; ?></span>
                                     </div>
-                                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-900 shadow-inner">
+                                    <div class="w-full bg-neutral-900/20 h-2 rounded-full overflow-hidden border border-neutral-800 shadow-inner">
                                         <div class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full" style="width: <?php echo $mod_pct; ?>%"></div>
                                     </div>
                                 </div>
                                 <div>
                                     <div class="flex justify-between text-xs font-semibold mb-2">
                                         <span class="text-rose-450">High Risk / Critical (CC &gt; 20)</span>
-                                        <span class="text-white font-mono bg-slate-950/80 px-2 py-0.5 rounded border border-slate-900/60 shadow-inner"><?php echo $high_count; ?></span>
+                                        <span class="text-white font-mono bg-neutral-900/20/80 px-2 py-0.5 rounded border border-neutral-800/60 shadow-inner"><?php echo $high_count; ?></span>
                                     </div>
-                                    <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-900 shadow-inner">
+                                    <div class="w-full bg-neutral-900/20 h-2 rounded-full overflow-hidden border border-neutral-800 shadow-inner">
                                         <div class="bg-gradient-to-r from-rose-500 to-red-500 h-full rounded-full" style="width: <?php echo $high_pct; ?>%"></div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="mt-8 pt-4 border-t border-slate-800/40 flex items-center gap-2 text-[11px] text-slate-500">
+                            <div class="mt-8 pt-4 border-t border-neutral-800/40 flex items-center gap-2 text-[11px] text-neutral-550">
                                 <span>💡</span>
                                 <span>Target CC &le; 10 to make unit testing and maintenance easier.</span>
                             </div>
                         </div>
 
                         <!-- Right card: Refactoring Recommendations & Insights (7 columns) -->
-                        <div class="lg:col-span-7 glass-card rounded-2xl p-6 border border-slate-800/80 flex flex-col justify-between">
+                        <div class="lg:col-span-7 glass-card rounded-2xl p-6 border border-neutral-800 flex flex-col justify-between">
                             <div>
-                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 pb-2 border-b border-slate-800/60">
+                                <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2 pb-2 border-b border-neutral-800/60">
                                     REFACTORING RECOMMENDATIONS
                                 </h3>
-                                <p class="text-xs text-slate-500 mb-6">Actionable steps to optimize static code structures.</p>
+                                <p class="text-xs text-neutral-550 mb-6">Actionable steps to optimize static code structures.</p>
                                 
                                 <div class="flex flex-col min-h-[190px]">
                                     <?php if ($results['high_risk_functions'] == 0 && $results['avg_complexity'] <= 10): ?>
                                          <!-- Excellent code placeholder -->
                                          <div class="flex-1 flex flex-col items-center justify-center text-center py-6">
-                                             <div class="w-14 h-14 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mb-4 relative">
+                                             <div class="w-14 h-14 bg-[#050505]0/15 border border-slate-500/20 text-red-500 rounded-full flex items-center justify-center mb-4 relative">
                                                  <span class="absolute inset-0 rounded-full bg-emerald-500/15 animate-ping opacity-75"></span>
                                                  <svg class="w-6 h-6 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                                                  </svg>
                                              </div>
                                              <h4 class="text-sm font-bold text-white mb-1">System Secure &amp; Clean</h4>
-                                             <p class="text-xs text-slate-400">All logic flows are highly optimized. No critical complexity risk detected.</p>
+                                             <p class="text-xs text-neutral-500">All logic flows are highly optimized. No critical complexity risk detected.</p>
                                          </div>
                                      <?php else: ?>
                                         <div class="space-y-4 overflow-y-auto max-h-[220px] pr-2">
@@ -951,7 +681,7 @@ if ($results) {
                                                     $level = $f['complexity'] > 20 ? 'Critical' : 'Moderate';
                                                     $badge_color = $f['complexity'] > 20 ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
                                                     ?>
-                                                    <div class="p-3 bg-slate-950/65 border border-slate-900 rounded-xl flex items-start gap-3">
+                                                    <div class="p-3 bg-neutral-900/20/65 border border-neutral-800 rounded-xl flex items-start gap-3">
                                                         <span class="text-sm mt-0.5">⚠️</span>
                                                         <div class="flex-1">
                                                             <div class="flex justify-between items-center mb-1">
@@ -960,7 +690,7 @@ if ($results) {
                                                                     CC: <?php echo $f['complexity']; ?> (<?php echo $level; ?>)
                                                                 </span>
                                                             </div>
-                                                            <p class="text-[11px] text-slate-400 leading-relaxed">
+                                                            <p class="text-[11px] text-neutral-500 leading-relaxed">
                                                                 Function has high McCabe complexity. Consider splitting it into smaller helpers and reducing nested branching statements to simplify control flows.
                                                             </p>
                                                         </div>
@@ -970,11 +700,11 @@ if ($results) {
                                             }
                                             if ($shown === 0 && $results['D'] > 15) {
                                                 ?>
-                                                <div class="p-3 bg-slate-950/65 border border-slate-900 rounded-xl flex items-start gap-3">
+                                                <div class="p-3 bg-neutral-900/20/65 border border-neutral-800 rounded-xl flex items-start gap-3">
                                                     <span class="text-sm mt-0.5">💡</span>
                                                     <div class="flex-1">
                                                         <h5 class="text-xs font-bold text-white">Global Difficulty is High</h5>
-                                                        <p class="text-[11px] text-slate-400 leading-relaxed">
+                                                        <p class="text-[11px] text-neutral-500 leading-relaxed">
                                                             Overall logic difficulty ($D = <?php echo $results['D']; ?>$) is relatively high. Extract nested operations into class methods or separate functions to reduce cognitive strain.
                                                         </p>
                                                     </div>
@@ -993,13 +723,13 @@ if ($results) {
 
                 <!-- ==================== RESULTS TAB: MCCABE COMPLEXITY ==================== -->
                 <div id="results-panel-mccabe" class="results-tab-panel">
-                    <div class="glass-card border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                        <div class="bg-slate-950 px-5 py-4 border-b border-slate-800 flex justify-between items-center">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">McCabe Cyclomatic Complexity Analysis</h3>
-                            <span class="text-[10px] text-slate-500">Formulasi Keputusan: (Jalur Keputusan + 1)</span>
+                    <div class="glass-card border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
+                        <div class="bg-neutral-900/20 px-5 py-4 border-b border-neutral-800 flex justify-between items-center">
+                            <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider">McCabe Cyclomatic Complexity Analysis</h3>
+                            <span class="text-[10px] text-neutral-550">Formulasi Keputusan: (Jalur Keputusan + 1)</span>
                         </div>
-                        <table class="w-full text-left text-xs text-slate-300">
-                            <thead class="bg-slate-950/80 text-[10px] text-slate-500 uppercase font-semibold border-b border-slate-850">
+                        <table class="w-full text-left text-xs text-neutral-300">
+                            <thead class="bg-neutral-900/20/80 text-[10px] text-neutral-550 uppercase font-semibold border-b border-neutral-800">
                                 <tr>
                                     <th class="px-6 py-4 font-bold">Nama Fungsi</th>
                                     <th class="px-6 py-4">Lokasi Berkas</th>
@@ -1023,10 +753,10 @@ if ($results) {
                                             $badge = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
                                         }
                                     ?>
-                                    <tr class="hover:bg-slate-900/10">
+                                    <tr class="hover:bg-neutral-900/40">
                                         <td class="px-6 py-4 font-mono font-bold text-white"><?php echo htmlspecialchars($f['name']); ?>()</td>
-                                        <td class="px-6 py-4 text-slate-400 font-mono"><?php echo htmlspecialchars($f['file']); ?></td>
-                                        <td class="px-6 py-4 font-mono text-slate-500"><?php echo $f['start_line']; ?> - <?php echo $f['end_line']; ?></td>
+                                        <td class="px-6 py-4 text-neutral-500 font-mono"><?php echo htmlspecialchars($f['file']); ?></td>
+                                        <td class="px-6 py-4 font-mono text-neutral-550"><?php echo $f['start_line']; ?> - <?php echo $f['end_line']; ?></td>
                                         <td class="px-6 py-4 text-center font-bold font-mono text-white"><?php echo $cc; ?></td>
                                         <td class="px-6 py-4 text-right">
                                             <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold border <?php echo $badge; ?>">
@@ -1042,13 +772,13 @@ if ($results) {
 
                 <!-- ==================== RESULTS TAB: HALSTEAD METRICS ==================== -->
                 <div id="results-panel-halstead" class="results-tab-panel">
-                    <div class="glass-card border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                        <div class="bg-slate-950 px-5 py-4 border-b border-slate-800 flex justify-between items-center">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Rincian Lengkap Halstead Complexity Metrics</h3>
-                            <span class="text-[10px] text-slate-500">Standar Formula Formal</span>
+                    <div class="glass-card border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
+                        <div class="bg-neutral-900/20 px-5 py-4 border-b border-neutral-800 flex justify-between items-center">
+                            <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider">Rincian Lengkap Halstead Complexity Metrics</h3>
+                            <span class="text-[10px] text-neutral-550">Standar Formula Formal</span>
                         </div>
-                        <table class="w-full text-left text-xs text-slate-300">
-                            <thead class="bg-slate-950/80 text-[10px] text-slate-500 uppercase font-semibold border-b border-slate-850">
+                        <table class="w-full text-left text-xs text-neutral-300">
+                            <thead class="bg-neutral-900/20/80 text-[10px] text-neutral-550 uppercase font-semibold border-b border-neutral-800">
                                 <tr>
                                     <th class="px-6 py-4 font-bold">Simbol</th>
                                     <th class="px-6 py-4">Nama Metrik</th>
@@ -1057,72 +787,72 @@ if ($results) {
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-850">
-                                <tr class="hover:bg-slate-900/10">
-                                    <td class="px-6 py-4 font-mono text-teal-400 font-bold">n1</td>
-                                    <td class="px-6 py-4 text-slate-400">Operator Unik</td>
-                                    <td class="px-6 py-4 font-mono text-slate-600">-</td>
+                                <tr class="hover:bg-neutral-900/40">
+                                    <td class="px-6 py-4 font-mono text-red-500 font-bold">n1</td>
+                                    <td class="px-6 py-4 text-neutral-500">Operator Unik</td>
+                                    <td class="px-6 py-4 font-mono text-neutral-400">-</td>
                                     <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['n1']; ?></td>
                                 </tr>
-                                <tr class="hover:bg-slate-900/10">
-                                    <td class="px-6 py-4 font-mono text-teal-400 font-bold">n2</td>
-                                    <td class="px-6 py-4 text-slate-400">Operand Unik</td>
-                                    <td class="px-6 py-4 font-mono text-slate-600">-</td>
+                                <tr class="hover:bg-neutral-900/40">
+                                    <td class="px-6 py-4 font-mono text-red-500 font-bold">n2</td>
+                                    <td class="px-6 py-4 text-neutral-500">Operand Unik</td>
+                                    <td class="px-6 py-4 font-mono text-neutral-400">-</td>
                                     <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['n2']; ?></td>
                                 </tr>
-                                <tr class="hover:bg-slate-900/10">
-                                    <td class="px-6 py-4 font-mono text-cyan-400 font-bold">N1</td>
-                                    <td class="px-6 py-4 text-slate-400">Total Operator</td>
-                                    <td class="px-6 py-4 font-mono text-slate-600">-</td>
+                                <tr class="hover:bg-neutral-900/40">
+                                    <td class="px-6 py-4 font-mono text-neutral-550 font-bold">N1</td>
+                                    <td class="px-6 py-4 text-neutral-500">Total Operator</td>
+                                    <td class="px-6 py-4 font-mono text-neutral-400">-</td>
                                     <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['N1']; ?></td>
                                 </tr>
-                                <tr class="hover:bg-slate-900/10">
-                                    <td class="px-6 py-4 font-mono text-cyan-400 font-bold">N2</td>
-                                    <td class="px-6 py-4 text-slate-400">Total Operand</td>
-                                    <td class="px-6 py-4 font-mono text-slate-600">-</td>
+                                <tr class="hover:bg-neutral-900/40">
+                                    <td class="px-6 py-4 font-mono text-neutral-550 font-bold">N2</td>
+                                    <td class="px-6 py-4 text-neutral-500">Total Operand</td>
+                                    <td class="px-6 py-4 font-mono text-neutral-400">-</td>
                                     <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['N2']; ?></td>
                                 </tr>
-                                <tr class="hover:bg-slate-900/10">
+                                <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-pink-400 font-bold">n</td>
-                                    <td class="px-6 py-4 text-slate-400">Program Vocabulary</td>
-                                    <td class="px-6 py-4 font-mono text-slate-600">n1 + n2</td>
+                                    <td class="px-6 py-4 text-neutral-500">Program Vocabulary</td>
+                                    <td class="px-6 py-4 font-mono text-neutral-400">n1 + n2</td>
                                     <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['n']; ?></td>
                                 </tr>
-                                <tr class="hover:bg-slate-900/10">
+                                <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-pink-400 font-bold">N</td>
-                                    <td class="px-6 py-4 text-slate-400">Program Length</td>
-                                    <td class="px-6 py-4 font-mono text-slate-600">N1 + N2</td>
+                                    <td class="px-6 py-4 text-neutral-500">Program Length</td>
+                                    <td class="px-6 py-4 font-mono text-neutral-400">N1 + N2</td>
                                     <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['N']; ?></td>
                                 </tr>
-                                <tr class="hover:bg-slate-900/10">
+                                <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-white font-bold">V</td>
-                                    <td class="px-6 py-4 text-slate-400">Program Volume (Bit)</td>
-                                    <td class="px-6 py-4 font-mono text-slate-600">N * log2(n)</td>
+                                    <td class="px-6 py-4 text-neutral-500">Program Volume (Bit)</td>
+                                    <td class="px-6 py-4 font-mono text-neutral-400">N * log2(n)</td>
                                     <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['V']; ?></td>
                                 </tr>
-                                <tr class="hover:bg-slate-900/10">
+                                <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-amber-400 font-bold">D</td>
-                                    <td class="px-6 py-4 text-slate-400">Difficulty</td>
-                                    <td class="px-6 py-4 font-mono text-slate-600">(n1 / 2) * (N2 / n2)</td>
+                                    <td class="px-6 py-4 text-neutral-500">Difficulty</td>
+                                    <td class="px-6 py-4 font-mono text-neutral-400">(n1 / 2) * (N2 / n2)</td>
                                     <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['D']; ?></td>
                                 </tr>
-                                <tr class="hover:bg-slate-900/10">
-                                    <td class="px-6 py-4 font-mono text-emerald-400 font-bold">E</td>
-                                    <td class="px-6 py-4 text-slate-400">Programming Effort</td>
-                                    <td class="px-6 py-4 font-mono text-slate-600">D * V</td>
+                                <tr class="hover:bg-neutral-900/40">
+                                    <td class="px-6 py-4 font-mono text-red-500 font-bold">E</td>
+                                    <td class="px-6 py-4 text-neutral-500">Programming Effort</td>
+                                    <td class="px-6 py-4 font-mono text-neutral-400">D * V</td>
                                     <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['E']; ?></td>
                                 </tr>
-                                <tr class="hover:bg-slate-900/10">
+                                <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-sky-400 font-bold">T</td>
-                                    <td class="px-6 py-4 text-slate-400">Time Required (Estimasi)</td>
-                                    <td class="px-6 py-4 font-mono text-slate-600">E / 18 (Detik)</td>
+                                    <td class="px-6 py-4 text-neutral-500">Time Required (Estimasi)</td>
+                                    <td class="px-6 py-4 font-mono text-neutral-400">E / 18 (Detik)</td>
                                     <td class="px-6 py-4 text-right font-semibold text-white font-mono">
                                         <?php echo $results['T'] > 60 ? round($results['T']/60, 2).' Menit' : $results['T'].' Detik'; ?>
                                     </td>
                                 </tr>
-                                <tr class="hover:bg-slate-900/10">
+                                <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-red-400 font-bold">B</td>
-                                    <td class="px-6 py-4 text-slate-400">Delivered Bugs Estimate</td>
-                                    <td class="px-6 py-4 font-mono text-slate-600">V / 3000</td>
+                                    <td class="px-6 py-4 text-neutral-500">Delivered Bugs Estimate</td>
+                                    <td class="px-6 py-4 font-mono text-neutral-400">V / 3000</td>
                                     <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['B']; ?></td>
                                 </tr>
                             </tbody>
@@ -1132,14 +862,14 @@ if ($results) {
 
                 <!-- ==================== RESULTS TAB: CONTROL FLOW GRAPH ==================== -->
                 <div id="results-panel-cfg" class="results-tab-panel">
-                    <div class="glass-card border border-slate-800 rounded-2xl overflow-hidden shadow-xl p-6">
+                    <div class="glass-card border border-neutral-800 rounded-2xl overflow-hidden shadow-xl p-6">
                         <div class="mb-6">
                             <h3 class="text-sm font-bold text-white">Visualisasi Control Flow Graph (CFG)</h3>
-                            <p class="text-xs text-slate-400 mt-1">Diagram alir terpadu seluruh struktur fungsi di dalam kode sumber (Unified Interactive Whiteboard).</p>
+                            <p class="text-xs text-neutral-500 mt-1">Diagram alir terpadu seluruh struktur fungsi di dalam kode sumber (Unified Interactive Whiteboard).</p>
                         </div>
 
                         <!-- Interactive Whiteboard Canvas -->
-                        <div class="relative w-full bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[600px] overflow-hidden select-none flex flex-col justify-between" id="cfg-canvas-container">
+                        <div class="relative w-full bg-white rounded-2xl border border-neutral-800 shadow-sm min-h-[600px] overflow-hidden select-none flex flex-col justify-between" id="cfg-canvas-container">
                             <!-- SVG Canvas -->
                             <svg id="cfg-svg" width="100%" height="600" class="w-full h-full cursor-grab active:cursor-grabbing overflow-visible">
                                 <defs>
@@ -1162,9 +892,9 @@ if ($results) {
                             </svg>
 
                             <!-- Floating Control Panel in top-right corner -->
-                            <div class="absolute top-4 right-4 z-20 flex items-center bg-[#0f172a]/95 text-white rounded-xl shadow-lg border border-slate-800 px-3 py-1.5 gap-2 text-xs font-semibold select-none">
-                                <button type="button" onclick="exportCFGToPNG()" class="px-2.5 py-1 hover:text-teal-400 transition duration-150 rounded hover:bg-slate-800">PNG</button>
-                                <button type="button" onclick="exportCFGToPDF()" class="px-2.5 py-1 hover:text-teal-400 transition duration-150 rounded hover:bg-slate-800">PDF</button>
+                            <div class="absolute top-4 right-4 z-20 flex items-center bg-indigo-950/95 text-white rounded-xl shadow-lg border border-neutral-800 px-3 py-1.5 gap-2 text-xs font-semibold select-none">
+                                <button type="button" onclick="exportCFGToPNG()" class="px-2.5 py-1 hover:text-red-500 transition duration-150 rounded hover:bg-slate-800">PNG</button>
+                                <button type="button" onclick="exportCFGToPDF()" class="px-2.5 py-1 hover:text-red-500 transition duration-150 rounded hover:bg-slate-800">PDF</button>
                                 <div class="w-[1px] h-4 bg-slate-800 self-center mx-1"></div>
                                 <button type="button" onclick="zoomCFG(-0.1)" class="w-7 h-7 flex items-center justify-center hover:bg-slate-800 rounded text-base transition duration-150">−</button>
                                 <span id="cfg-zoom-level" class="min-w-[40px] text-center text-[11px] font-mono">100%</span>
@@ -1176,20 +906,20 @@ if ($results) {
 
                 <!-- ==================== RESULTS TAB: FILES REPORT ==================== -->
                 <div id="results-panel-files" class="results-tab-panel">
-                    <div class="glass-card border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                        <div class="bg-slate-950 px-5 py-4 border-b border-slate-800 flex justify-between items-center">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Laporan Metrik Berkas (Files Report)</h3>
-                            <span class="text-[10px] text-slate-500">Analisis per Berkas</span>
+                    <div class="glass-card border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
+                        <div class="bg-neutral-900/20 px-5 py-4 border-b border-neutral-800 flex justify-between items-center">
+                            <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider">Laporan Metrik Berkas (Files Report)</h3>
+                            <span class="text-[10px] text-neutral-550">Analisis per Berkas</span>
                         </div>
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs text-slate-300 min-w-[800px]">
-                                <thead class="bg-slate-950/80 text-[10px] text-slate-500 uppercase font-semibold border-b border-slate-850">
+                            <table class="w-full text-left text-xs text-neutral-300 min-w-[800px]">
+                                <thead class="bg-neutral-900/20/80 text-[10px] text-neutral-550 uppercase font-semibold border-b border-neutral-800">
                                     <tr>
                                         <th class="px-6 py-4 font-bold">Nama Berkas</th>
                                         <th class="px-6 py-4">Baris Kode (LOC)</th>
                                         <th class="px-6 py-4 text-center">Jumlah Fungsi</th>
                                         <th class="px-6 py-4 text-center">Rata-rata CC</th>
-                                        <th class="px-6 py-4 text-center text-cyan-400">Volume (V)</th>
+                                        <th class="px-6 py-4 text-center text-neutral-550">Volume (V)</th>
                                         <th class="px-6 py-4 text-center text-amber-400">Difficulty (D)</th>
                                         <th class="px-6 py-4 text-center text-rose-450">Est. Bugs (B)</th>
                                         <th class="px-6 py-4 text-center">Total Operator</th>
@@ -1198,16 +928,16 @@ if ($results) {
                                 </thead>
                                 <tbody class="divide-y divide-slate-850">
                                     <?php foreach ($results['files_report'] as $file): ?>
-                                        <tr class="hover:bg-slate-900/10">
-                                            <td class="px-6 py-4 font-mono font-bold text-teal-400"><?php echo htmlspecialchars($file['name']); ?></td>
+                                        <tr class="hover:bg-neutral-900/40">
+                                            <td class="px-6 py-4 font-mono font-bold text-red-500"><?php echo htmlspecialchars($file['name']); ?></td>
                                             <td class="px-6 py-4 font-mono text-white"><?php echo $file['lines']; ?></td>
-                                            <td class="px-6 py-4 text-center font-mono text-slate-400"><?php echo $file['functions_count']; ?></td>
+                                            <td class="px-6 py-4 text-center font-mono text-neutral-500"><?php echo $file['functions_count']; ?></td>
                                             <td class="px-6 py-4 text-center font-bold font-mono text-white"><?php echo $file['avg_complexity']; ?></td>
                                             <td class="px-6 py-4 text-center font-mono text-cyan-450"><?php echo $file['volume']; ?></td>
                                             <td class="px-6 py-4 text-center font-mono text-amber-450"><?php echo $file['difficulty']; ?></td>
                                             <td class="px-6 py-4 text-center font-mono text-rose-400"><?php echo $file['bugs']; ?></td>
-                                            <td class="px-6 py-4 text-center font-mono text-slate-500"><?php echo $file['operators_count']; ?></td>
-                                            <td class="px-6 py-4 text-right font-mono text-slate-500"><?php echo $file['operands_count']; ?></td>
+                                            <td class="px-6 py-4 text-center font-mono text-neutral-550"><?php echo $file['operators_count']; ?></td>
+                                            <td class="px-6 py-4 text-right font-mono text-neutral-550"><?php echo $file['operands_count']; ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -1219,31 +949,31 @@ if ($results) {
                 <!-- ==================== RESULTS TAB: PARSED TOKENS ==================== -->
                 <div id="results-panel-tokens" class="results-tab-panel">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="glass-card border border-slate-800 rounded-2xl p-5 shadow-xl">
-                            <h4 class="text-xs font-bold text-teal-400 uppercase tracking-wider mb-4 flex items-center justify-between">
-                                <span>🛠️ Operator Unik (<?php echo $results['n1']; ?>)</span>
+                        <div class="glass-card border border-neutral-800 rounded-2xl p-5 shadow-xl">
+                            <h4 class="text-xs font-bold text-red-500 uppercase tracking-wider mb-4 flex items-center justify-between">
+                                <span class="flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg> Operator Unik (<?php echo $results['n1']; ?>)</span>
                             </h4>
-                            <div class="flex flex-wrap gap-2 p-4 bg-slate-950 rounded-xl border border-slate-850 min-h-[160px] align-content-start">
+                            <div class="flex flex-wrap gap-2 p-4 bg-neutral-900/20 rounded-xl border border-neutral-800 min-h-[160px] align-content-start">
                                 <?php if (!empty($results['unique_operators_list'])): ?>
                                     <?php foreach ($results['unique_operators_list'] as $op): ?>
-                                        <code class="px-2.5 py-1 text-xs bg-slate-900 border border-slate-800 rounded text-slate-300 font-mono hover:border-teal-500/30 transition-colors"><?php echo htmlspecialchars($op); ?></code>
+                                        <code class="px-2.5 py-1 text-xs bg-slate-900 border border-neutral-800 rounded text-neutral-300 font-mono hover:border-red-500/30 transition-colors"><?php echo htmlspecialchars($op); ?></code>
                                     <?php endforeach; ?>
                                 <?php else: ?>
-                                    <span class="text-xs text-slate-600 italic">Tidak ada operator yang ditemukan.</span>
+                                    <span class="text-xs text-neutral-400 italic">Tidak ada operator yang ditemukan.</span>
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="glass-card border border-slate-800 rounded-2xl p-5 shadow-xl">
-                            <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-4 flex items-center justify-between">
+                        <div class="glass-card border border-neutral-800 rounded-2xl p-5 shadow-xl">
+                            <h4 class="text-xs font-bold text-neutral-550 uppercase tracking-wider mb-4 flex items-center justify-between">
                                 <span>📦 Operand Unik (<?php echo $results['n2']; ?>)</span>
                             </h4>
-                            <div class="flex flex-wrap gap-2 p-4 bg-slate-950 rounded-xl border border-slate-850 min-h-[160px] align-content-start">
+                            <div class="flex flex-wrap gap-2 p-4 bg-neutral-900/20 rounded-xl border border-neutral-800 min-h-[160px] align-content-start">
                                 <?php if (!empty($results['unique_operands_list'])): ?>
                                     <?php foreach ($results['unique_operands_list'] as $operand): ?>
-                                        <code class="px-2.5 py-1 text-xs bg-slate-900 border border-slate-800 rounded text-slate-300 font-mono hover:border-cyan-500/30 transition-colors"><?php echo htmlspecialchars($operand); ?></code>
+                                        <code class="px-2.5 py-1 text-xs bg-slate-900 border border-neutral-800 rounded text-neutral-300 font-mono hover:border-red-500/30 transition-colors"><?php echo htmlspecialchars($operand); ?></code>
                                     <?php endforeach; ?>
                                 <?php else: ?>
-                                    <span class="text-xs text-slate-600 italic">Tidak ada operand yang ditemukan.</span>
+                                    <span class="text-xs text-neutral-400 italic">Tidak ada operand yang ditemukan.</span>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -1252,28 +982,28 @@ if ($results) {
 
                 <!-- ==================== RESULTS TAB: SOURCE CODE ==================== -->
                 <div id="results-panel-source" class="results-tab-panel">
-                    <div class="glass-card border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-                        <div class="bg-slate-950 px-5 py-4 border-b border-slate-800 flex justify-between items-center">
-                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Preview Source Code</h3>
-                            <button onclick="copyAnalyzedCode()" class="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-[10px] font-bold text-slate-300 hover:text-white rounded-lg transition duration-200 flex items-center gap-1">
+                    <div class="glass-card border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
+                        <div class="bg-neutral-900/20 px-5 py-4 border-b border-neutral-800 flex justify-between items-center">
+                            <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider">Preview Source Code</h3>
+                            <button onclick="copyAnalyzedCode()" class="px-3 py-1.5 bg-slate-900 border border-neutral-800 hover:bg-slate-800 text-[10px] font-bold text-neutral-300 hover:text-white rounded-lg transition duration-200 flex items-center gap-1">
                                 📋 Copy Code
                             </button>
                         </div>
-                        <div class="p-4 bg-slate-950/60">
-                            <pre id="analyzed-code-block" class="text-[10px] font-mono text-slate-400 bg-slate-950 p-4 border border-slate-800/60 rounded-xl max-h-[500px] overflow-y-auto leading-relaxed"><?php echo htmlspecialchars($code_input); ?></pre>
+                        <div class="p-4 bg-neutral-900/20/60">
+                            <pre id="analyzed-code-block" class="text-[10px] font-mono text-neutral-500 bg-neutral-900/20 p-4 border border-neutral-800/60 rounded-xl max-h-[500px] overflow-y-auto leading-relaxed"><?php echo htmlspecialchars($code_input); ?></pre>
                         </div>
                     </div>
                 </div>
 
             <?php else: ?>
                 <!-- Blank state results fallback -->
-                <div class="glass-card border border-slate-800 border-dashed rounded-2xl p-16 text-center text-slate-550 flex flex-col items-center justify-center h-full min-h-[350px]">
-                    <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-3xl mb-4 border border-slate-800">
+                <div class="glass-card border border-neutral-800 border-dashed rounded-2xl p-16 text-center text-slate-550 flex flex-col items-center justify-center h-full min-h-[350px]">
+                    <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-3xl mb-4 border border-neutral-800">
                         📊
                     </div>
-                    <h3 class="text-sm font-bold text-slate-350 mb-1">Belum Ada Data Hasil Analisis</h3>
-                    <p class="text-xs text-slate-500 max-w-sm">Jalankan proses analisis terlebih dahulu di Console Analyzer untuk memunculkan laporan metrik.</p>
-                    <button onclick="switchMainTab('analyzer')" class="mt-4 px-4 py-2 bg-teal-600 text-white text-xs font-semibold rounded-lg hover:bg-teal-500 shadow-md shadow-teal-600/20 transition duration-200">
+                    <h3 class="text-sm font-bold text-neutral-300 mb-1">Belum Ada Data Hasil Analisis</h3>
+                    <p class="text-xs text-neutral-550 max-w-sm">Jalankan proses analisis terlebih dahulu di Console Analyzer untuk memunculkan laporan metrik.</p>
+                    <button onclick="switchMainTab('analyzer')" class="mt-4 px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-[#050505]0 shadow-md shadow-red-600/10 transition duration-200">
                         Ke Analyzer Console
                     </button>
                 </div>
@@ -1283,8 +1013,8 @@ if ($results) {
     </main>
 
     <!-- Footer -->
-    <footer class="mt-20 border-t border-slate-900 bg-slate-950/50 py-8 relative z-10 no-print">
-        <div class="max-w-[1600px] mx-auto px-6 text-center text-xs text-slate-600">
+    <footer class="mt-20 border-t border-neutral-800 bg-neutral-900/20/50 py-8 relative z-10 no-print">
+        <div class="max-w-[1600px] mx-auto px-6 text-center text-xs text-neutral-400">
             <p>&copy; 2026 CodePulse. Halstead &amp; McCabe Metrics Analyzer Engine. Premium Edition.</p>
         </div>
     </footer>
@@ -1305,14 +1035,14 @@ if ($results) {
             
             // Set styles based on tab selection
             if (tabId === 'home') {
-                btnHome.className = 'text-sm font-semibold text-teal-400';
-                btnCalc.className = 'text-sm font-semibold text-slate-400 hover:text-white';
+                btnHome.className = 'text-sm font-semibold text-red-500';
+                btnCalc.className = 'text-sm font-semibold text-neutral-500 hover:text-white';
             } else if (tabId === 'analyzer') {
-                btnCalc.className = 'text-sm font-semibold text-teal-400';
-                btnHome.className = 'text-sm font-semibold text-slate-400 hover:text-white';
+                btnCalc.className = 'text-sm font-semibold text-red-500';
+                btnHome.className = 'text-sm font-semibold text-neutral-500 hover:text-white';
             } else {
-                btnHome.className = 'text-sm font-semibold text-slate-400 hover:text-white';
-                btnCalc.className = 'text-sm font-semibold text-slate-400 hover:text-white';
+                btnHome.className = 'text-sm font-semibold text-neutral-500 hover:text-white';
+                btnCalc.className = 'text-sm font-semibold text-neutral-500 hover:text-white';
             }
         }
 
@@ -1326,9 +1056,9 @@ if ($results) {
                 const btn = document.getElementById('res-tab-' + tab);
                 if (!btn) return;
                 if (tab === subTabId) {
-                    btn.className = 'flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 text-white border border-slate-800 shadow-sm font-semibold';
+                    btn.className = 'flex items-center gap-1.5 px-4 py-2 rounded-lg bg-slate-900 text-white border border-neutral-800 shadow-sm font-semibold';
                 } else {
-                    btn.className = 'flex items-center gap-1.5 px-4 py-2 rounded-lg text-slate-400 hover:text-slate-200 transition-colors font-medium border border-transparent';
+                    btn.className = 'flex items-center gap-1.5 px-4 py-2 rounded-lg text-neutral-500 hover:text-neutral-200 transition-colors font-medium border border-transparent';
                 }
             });
 
@@ -1349,9 +1079,9 @@ if ($results) {
                 const tab = document.getElementById('tab-input-' + m);
                 if (!tab) return;
                 if (m === modeId) {
-                    tab.className = 'flex-1 py-2.5 text-center rounded-lg bg-teal-600 text-white shadow-lg shadow-teal-600/15 font-bold';
+                    tab.className = 'flex-1 py-2.5 text-center rounded-lg bg-indigo-600 text-white shadow-lg shadow-red-600/10 font-bold';
                 } else {
-                    tab.className = 'flex-1 py-2.5 text-center rounded-lg text-slate-400 hover:text-slate-200 transition-colors font-medium';
+                    tab.className = 'flex-1 py-2.5 text-center rounded-lg text-neutral-500 hover:text-neutral-200 transition-colors font-medium';
                 }
             });
         }
@@ -1375,13 +1105,13 @@ if ($results) {
         document.getElementById('file-input-control')?.addEventListener('change', function(e) {
             const fileName = e.target.files[0]?.name || 'File dipilih';
             document.getElementById('file-display-name').textContent = '📄 ' + fileName;
-            document.getElementById('file-display-name').classList.add('text-teal-400');
+            document.getElementById('file-display-name').classList.add('text-red-500');
         });
 
         document.getElementById('folder-input-control')?.addEventListener('change', function(e) {
             const fileCount = e.target.files?.length || 0;
             document.getElementById('folder-display-name').textContent = '📁 Terpilih: ' + fileCount + ' berkas di dalam folder';
-            document.getElementById('folder-display-name').classList.add('text-teal-400');
+            document.getElementById('folder-display-name').classList.add('text-red-500');
         });
 
         // Drag & Drop visual feedbacks
