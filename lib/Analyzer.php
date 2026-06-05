@@ -55,21 +55,40 @@ if (!function_exists('getFunctionBody')) {
 // Calculate Cyclomatic Complexity (McCabe)
 if (!function_exists('calculateMcCabe')) {
     function calculateMcCabe($function_body) {
-        // Strip comments
+        // 1. Bersihkan komentar
         $comment_patterns = array('/\\/\\*[\\s\\S]*?\\*\\//', '/\\/\\/.*$/m');
         $clean_body = preg_replace($comment_patterns, '', $function_body);
+        
+        // 2. Bersihkan literal string agar kata kunci/simbol di dalamnya tidak dihitung
+        $clean_body = preg_replace('/"[^"\\\\]*(?:\\\\.[^"\\\\]*)*"/', '""', $clean_body);
+        $clean_body = preg_replace('/\'[^\'\\\\]*(?:\\\\.[^\'\\\\]*)*\'/', "''", $clean_body);
+        
+        // 3. Bersihkan tag pembuka/penutup PHP jika ada
+        $clean_body = preg_replace('/<\?php|<\?|\?>/i', '', $clean_body);
+        
+        // 4. Standarkan "else if" menjadi "elseif" agar tidak terhitung ganda (oleh 'if' dan 'else if')
+        $clean_body = preg_replace('/\belse\s+if\b/i', 'elseif', $clean_body);
 
         $cc = 1;
-        // Keywords representing decisions
-        $keywords = ['if', 'elseif', 'else if', 'while', 'for', 'foreach', 'case', 'catch'];
+
+        // 5. Hitung kata kunci percabangan keputusan
+        $keywords = ['if', 'elseif', 'while', 'for', 'foreach', 'case', 'catch'];
         foreach ($keywords as $kw) {
             $cc += preg_match_all('/\b' . preg_quote($kw, '/') . '\b/i', $clean_body);
         }
-        // Logical operators representing decisions
-        $operators = ['&&', '||', '??', '?'];
-        foreach ($operators as $op) {
-            $cc += preg_match_all('/' . preg_quote($op, '/') . '/', $clean_body);
-        }
+
+        // 6. Hitung operator logika (&&, ||, ??)
+        $cc += preg_match_all('/&&/', $clean_body);
+        $cc += preg_match_all('/\|\|/', $clean_body);
+        $cc += preg_match_all('/\?\?/', $clean_body);
+        
+        // Hapus operator logika yang sudah dihitung agar tidak bentrok dengan karakter tunggal
+        $clean_body = str_replace(['&&', '||', '??'], ' ', $clean_body);
+
+        // 7. Hitung operator ternary '?'
+        // Hanya menghitung '?' yang TIDAK diikuti karakter kata (seperti tipe data nullable ?string) atau '->' (null-safe) atau '>' (tag penutup PHP)
+        $cc += preg_match_all('/\?(?!\w|->|>)/', $clean_body);
+
         return $cc;
     }
 }
@@ -123,49 +142,54 @@ if (!function_exists('analyzeProject')) {
             $total_N2 += count($file_operands);
             $total_n2 = array_merge($total_n2, $file_operands);
 
-            // Scan functions for McCabe
+            // Scan functions for McCabe based on file extension
             $file_functions = [];
-            
-            // PHP functions: function name(...) or public function name(...) etc.
-            preg_match_all('/(?:(?:public|private|protected|static)\s+)*function\s+([a-zA-Z0-9_]+)\s*\(/i', $code, $php_matches, PREG_OFFSET_CAPTURE);
-            foreach ($php_matches[1] as $match) {
-                $file_functions[] = [
-                    'name' => $match[0],
-                    'offset' => $match[1],
-                    'type' => 'PHP Function'
-                ];
-            }
-            
-            // JS Arrow functions: const name = () =>
-            preg_match_all('/(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s*)?\([^)]*\)\s*=>/i', $code, $js_arrow_matches, PREG_OFFSET_CAPTURE);
-            foreach ($js_arrow_matches[1] as $match) {
-                $file_functions[] = [
-                    'name' => $match[0],
-                    'offset' => $match[1],
-                    'type' => 'JS Arrow Function'
-                ];
+            $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+            if ($ext === 'php' || $ext === 'html' || empty($ext)) {
+                // PHP functions: function name(...) or public function name(...) etc.
+                preg_match_all('/(?:(?:public|private|protected|static)\s+)*function\s+([a-zA-Z0-9_]+)\s*\(/i', $code, $php_matches, PREG_OFFSET_CAPTURE);
+                foreach ($php_matches[1] as $match) {
+                    $file_functions[] = [
+                        'name' => $match[0],
+                        'offset' => $match[1],
+                        'type' => 'PHP Function'
+                    ];
+                }
             }
 
-            // JS methods: methodName() {
-            preg_match_all('/(?<!function\s)\b([a-zA-Z0-9_]+)\s*\([^)]*\)\s*\{/i', $code, $js_method_matches, PREG_OFFSET_CAPTURE);
-            foreach ($js_method_matches[1] as $match) {
-                $func_name = $match[0];
-                if (in_array(strtolower($func_name), ['if', 'while', 'switch', 'for', 'catch', 'foreach', 'elseif'])) {
-                    continue;
-                }
-                $already_added = false;
-                foreach ($file_functions as $f) {
-                    if (abs($f['offset'] - $match[1]) < 20) {
-                        $already_added = true;
-                        break;
-                    }
-                }
-                if (!$already_added) {
+            if ($ext === 'js' || $ext === 'html' || empty($ext)) {
+                // JS Arrow functions: const name = () =>
+                preg_match_all('/(?:const|let|var)\s+([a-zA-Z0-9_]+)\s*=\s*(?:async\s*)?\([^)]*\)\s*=>/i', $code, $js_arrow_matches, PREG_OFFSET_CAPTURE);
+                foreach ($js_arrow_matches[1] as $match) {
                     $file_functions[] = [
-                        'name' => $func_name,
+                        'name' => $match[0],
                         'offset' => $match[1],
-                        'type' => 'Method'
+                        'type' => 'JS Arrow Function'
                     ];
+                }
+
+                // JS methods: methodName() {
+                preg_match_all('/(?<!function\s)\b([a-zA-Z0-9_]+)\s*\([^)]*\)\s*\{/i', $code, $js_method_matches, PREG_OFFSET_CAPTURE);
+                foreach ($js_method_matches[1] as $match) {
+                    $func_name = $match[0];
+                    if (in_array(strtolower($func_name), ['if', 'while', 'switch', 'for', 'catch', 'foreach', 'elseif'])) {
+                        continue;
+                    }
+                    $already_added = false;
+                    foreach ($file_functions as $f) {
+                        if (abs($f['offset'] - $match[1]) < 20) {
+                            $already_added = true;
+                            break;
+                        }
+                    }
+                    if (!$already_added) {
+                        $file_functions[] = [
+                            'name' => $func_name,
+                            'offset' => $match[1],
+                            'type' => 'Method'
+                        ];
+                    }
                 }
             }
 
