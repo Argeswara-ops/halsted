@@ -181,6 +181,14 @@ if ($results) {
             background: rgba(232, 31, 37, 0.05) !important;
         }
 
+        .animate-spin-slow {
+            animation: spin 10s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         /* Printing adjustments to make a clean minimalist report */
         @media print {
             body {
@@ -237,7 +245,7 @@ if ($results) {
                     <button onclick="switchMainTab('analyzer')" id="nav-analyzer" class="text-sm font-semibold transition-colors duration-200">Analyzer Console</button>
                     <button onclick="switchMainTab('home'); setTimeout(() => document.getElementById('how-it-works').scrollIntoView({behavior: 'smooth'}), 150)" class="text-sm font-semibold text-neutral-500 hover:text-white transition duration-200">Docs</button>
                     <div class="h-4 w-[1px] bg-slate-800"></div>
-                    <button onclick="switchMainTab('analyzer')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-[#050505]0 text-xs font-semibold rounded-lg text-white transition duration-200 shadow-md shadow-red-600/10">
+                    <button onclick="switchMainTab('analyzer')" class="px-3.5 py-1.5 bg-white hover:bg-neutral-200 text-xs font-bold rounded-lg text-neutral-950 transition duration-200 shadow-md">
                         Start Analyzer
                     </button>
                 </div>
@@ -309,8 +317,14 @@ if ($results) {
         <div id="main-view-analyzer" class="main-tab-content">
             
             <div class="mb-6">
-                <h1 class="text-2xl font-extrabold text-white tracking-tight flex items-center">
-                    <span class="mr-2.5 px-2.5 py-1.5 bg-[#050505]0/10 border border-neutral-800 rounded-xl text-red-500 text-sm">⚙️</span> Analyzer Console
+                <h1 class="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+                    <span class="px-2.5 py-2.5 bg-neutral-900/40 border border-neutral-800 rounded-xl text-red-500 text-sm flex items-center justify-center">
+                        <svg class="w-4 h-4 text-red-500 animate-spin-slow" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </span>
+                    Analyzer Console
                 </h1>
                 <p class="text-xs text-neutral-500 mt-1">Masukkan kode sumber Anda di bawah ini melalui metode paste, berkas tunggal, atau seluruh folder proyek.</p>
             </div>
@@ -416,19 +430,19 @@ if ($results) {
                                 <p class="font-semibold text-red-500 mb-1">A. Uji Coba Upload File:</p>
                                 <ol class="list-decimal pl-4 space-y-1 leading-relaxed">
                                     <li>Klik salah satu tombol unduh file di atas.</li>
-                                    <li>Pilih tab **"File Upload"** di sebelah kiri.</li>
+                                    <li>Pilih tab <strong>"File Upload"</strong> di sebelah kiri.</li>
                                     <li>Seret file yang terunduh ke area dropzone, atau klik untuk memilih file tersebut.</li>
-                                    <li>Klik **"Jalankan Analisis Kode"**.</li>
+                                    <li>Klik <strong>"Jalankan Analisis Kode"</strong>.</li>
                                 </ol>
                             </div>
                             <div class="border-t border-neutral-800/40 pt-3">
                                 <p class="font-semibold text-red-500 mb-1">B. Uji Coba Upload Folder:</p>
                                 <ol class="list-decimal pl-4 space-y-1 leading-relaxed">
-                                    <li>Pilih tab **"Folder Upload"** di sebelah kiri.</li>
+                                    <li>Pilih tab <strong>"Folder Upload"</strong> di sebelah kiri.</li>
                                     <li>Klik dropzone folder.</li>
                                     <li>Arahkan dan pilih direktori bernama <code class="bg-neutral-900/20 px-1 py-0.5 rounded text-red-500 font-mono">samples/</code> di dalam folder proyek Anda.</li>
                                     <li>Setujui dialog konfirmasi upload di browser Anda.</li>
-                                    <li>Klik **"Jalankan Analisis Kode"**.</li>
+                                    <li>Klik <strong>"Jalankan Analisis Kode"</strong>.</li>
                                 </ol>
                             </div>
                         </div>
@@ -1003,7 +1017,7 @@ if ($results) {
                     </div>
                     <h3 class="text-sm font-bold text-neutral-300 mb-1">Belum Ada Data Hasil Analisis</h3>
                     <p class="text-xs text-neutral-550 max-w-sm">Jalankan proses analisis terlebih dahulu di Console Analyzer untuk memunculkan laporan metrik.</p>
-                    <button onclick="switchMainTab('analyzer')" class="mt-4 px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-[#050505]0 shadow-md shadow-red-600/10 transition duration-200">
+                    <button onclick="switchMainTab('analyzer')" class="mt-4 px-4 py-2 bg-white hover:bg-neutral-200 text-neutral-950 text-xs font-bold rounded-lg transition duration-200 shadow-md">
                         Ke Analyzer Console
                     </button>
                 </div>
@@ -1015,7 +1029,7 @@ if ($results) {
     <!-- Footer -->
     <footer class="mt-20 border-t border-neutral-800 bg-neutral-900/20/50 py-8 relative z-10 no-print">
         <div class="max-w-[1600px] mx-auto px-6 text-center text-xs text-neutral-400">
-            <p>&copy; 2026 CodePulse. Halstead &amp; McCabe Metrics Analyzer Engine. Premium Edition.</p>
+            <p>&copy; 2026 CodePulse. Dibuat oleh <a href="https://github.com/Argeswara-ops" target="_blank" class="text-red-500 hover:underline">Argeswara-ops</a>. Premium Edition.</p>
         </div>
     </footer>
 
@@ -1079,7 +1093,7 @@ if ($results) {
                 const tab = document.getElementById('tab-input-' + m);
                 if (!tab) return;
                 if (m === modeId) {
-                    tab.className = 'flex-1 py-2.5 text-center rounded-lg bg-indigo-600 text-white shadow-lg shadow-red-600/10 font-bold';
+                    tab.className = 'flex-1 py-2.5 text-center rounded-lg bg-white text-neutral-950 shadow-md font-bold';
                 } else {
                     tab.className = 'flex-1 py-2.5 text-center rounded-lg text-neutral-500 hover:text-neutral-200 transition-colors font-medium';
                 }
