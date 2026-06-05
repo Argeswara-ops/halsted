@@ -11,7 +11,7 @@ $inputType = 'paste';
 $active_tab = 'home';
 $files_data = [];
 
-require_once 'lib/Analyzer.php';
+require_once __DIR__ . '/lib/Analyzer.php';
 
 // Form Submission Handler
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
