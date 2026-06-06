@@ -243,6 +243,7 @@ if ($results) {
                 <div class="flex items-center space-x-6">
                     <button onclick="switchMainTab('home')" id="nav-home" class="text-sm font-semibold transition-colors duration-200">Overview</button>
                     <button onclick="switchMainTab('analyzer')" id="nav-analyzer" class="text-sm font-semibold transition-colors duration-200">Analyzer Console</button>
+                    <button onclick="switchMainTab('history')" id="nav-history" class="text-sm font-semibold text-neutral-500 hover:text-white transition duration-200">History Logs</button>
                     <button onclick="switchMainTab('home'); setTimeout(() => document.getElementById('how-it-works').scrollIntoView({behavior: 'smooth'}), 150)" class="text-sm font-semibold text-neutral-500 hover:text-white transition duration-200">Docs</button>
                     <div class="h-4 w-[1px] bg-slate-800"></div>
                     <button onclick="switchMainTab('analyzer')" class="px-3.5 py-1.5 bg-white hover:bg-neutral-200 text-xs font-bold rounded-lg text-neutral-950 transition duration-200 shadow-md">
@@ -470,7 +471,7 @@ if ($results) {
                         </div>
                         <!-- Program Title info -->
                         <h1 class="text-2xl font-bold text-white tracking-tight flex items-center">
-                            <?php echo $analysis_source; ?> <span class="mx-2 text-red-500 font-normal">&middot;</span> <span id="live-clock" class="text-neutral-500 font-normal text-lg"><?php echo date('n/j/Y, g:i:s A'); ?></span>
+                            <span id="analysis-source-title"><?php echo $analysis_source; ?></span> <span class="mx-2 text-red-500 font-normal">&middot;</span> <span id="live-clock" class="text-neutral-500 font-normal text-lg"><?php echo date('n/j/Y, g:i:s A'); ?></span>
                         </h1>
                         <p class="text-[11px] text-neutral-550 mt-1">Print PDF exports only the data tables (Functions &amp; Files) in a clean minimalist format.</p>
                     </div>
@@ -528,7 +529,7 @@ if ($results) {
                             <div>
                                 <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-2">TOTAL FILES</span>
                                 <div class="mt-1 inline-block">
-                                    <span class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo $results['total_files']; ?></span>
+                                    <span id="res-total-files" class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo $results['total_files']; ?></span>
                                 </div>
                             </div>
                         </div>
@@ -538,7 +539,7 @@ if ($results) {
                             <div>
                                 <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-2">TOTAL FUNCTIONS</span>
                                 <div class="mt-1 inline-block">
-                                    <span class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo $results['total_functions']; ?></span>
+                                    <span id="res-total-functions" class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo $results['total_functions']; ?></span>
                                 </div>
                             </div>
                         </div>
@@ -548,7 +549,7 @@ if ($results) {
                             <div>
                                 <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-2">AVERAGE COMPLEXITY</span>
                                 <div class="mt-1 inline-block">
-                                    <span class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo number_format($results['avg_complexity'], 1); ?></span>
+                                    <span id="res-avg-complexity" class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo number_format($results['avg_complexity'], 1); ?></span>
                                 </div>
                             </div>
                             <span class="text-[10px] text-neutral-550 block mt-2">Average linear branch complexity</span>
@@ -559,7 +560,7 @@ if ($results) {
                             <div>
                                 <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-2">HIGH RISK FUNCTIONS</span>
                                 <div class="mt-1 inline-block">
-                                    <span class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo $results['high_risk_functions']; ?></span>
+                                    <span id="res-high-risk-functions" class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo $results['high_risk_functions']; ?></span>
                                 </div>
                             </div>
                             <span class="text-[10px] text-neutral-550 block mt-2">Complexity status = high</span>
@@ -570,7 +571,7 @@ if ($results) {
                             <div>
                                 <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-2">ESTIMATED BUGS</span>
                                 <div class="mt-1 inline-block">
-                                    <span class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo number_format($results['B'], 3); ?></span>
+                                    <span id="res-estimated-bugs" class="text-2xl font-extrabold text-white font-mono bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner"><?php echo number_format($results['B'], 3); ?></span>
                                 </div>
                             </div>
                             <span class="text-[10px] text-neutral-550 block mt-2">Mathematical Halstead bug...</span>
@@ -594,10 +595,10 @@ if ($results) {
                                 $rating_border = 'border-l-amber-500';
                             }
                         ?>
-                        <div class="glass-card p-5 rounded-2xl border-l-4 <?php echo $rating_border; ?> hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]">
+                        <div id="res-global-rating-card" class="glass-card p-5 rounded-2xl border-l-4 <?php echo $rating_border; ?> hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]">
                             <div>
                                 <span class="text-[10px] font-bold text-neutral-550 block uppercase tracking-wider mb-1">GLOBAL RATING</span>
-                                <div class="mt-1 inline-block">
+                                <div class="mt-1 inline-block" id="res-global-rating-container">
                                     <span class="text-xl font-extrabold font-mono <?php echo $rating_color; ?> flex items-center gap-2 bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner">
                                         <span class="w-2.5 h-2.5 rounded-full <?php echo $rating_dot; ?> inline-block animate-pulse"></span>
                                         <?php echo $rating; ?>
@@ -632,28 +633,28 @@ if ($results) {
                                 <div>
                                     <div class="flex justify-between text-xs font-semibold mb-2">
                                         <span class="text-red-500">Simple &amp; Safe (CC &le; 10)</span>
-                                        <span class="text-white font-mono bg-neutral-900/20/80 px-2 py-0.5 rounded border border-neutral-800/60 shadow-inner"><?php echo $safe_count; ?></span>
+                                        <span id="breakdown-safe-count" class="text-white font-mono bg-neutral-900/20/80 px-2 py-0.5 rounded border border-neutral-800/60 shadow-inner"><?php echo $safe_count; ?></span>
                                     </div>
                                     <div class="w-full bg-neutral-900/20 h-2 rounded-full overflow-hidden border border-neutral-800 shadow-inner">
-                                        <div class="bg-gradient-to-r from-red-600 to-red-400 h-full rounded-full" style="width: <?php echo $safe_pct; ?>%"></div>
+                                        <div id="breakdown-safe-bar" class="bg-gradient-to-r from-red-600 to-red-400 h-full rounded-full" style="width: <?php echo $safe_pct; ?>%"></div>
                                     </div>
                                 </div>
                                 <div>
                                     <div class="flex justify-between text-xs font-semibold mb-2">
                                         <span class="text-amber-400">Moderate Risk (CC 11-20)</span>
-                                        <span class="text-white font-mono bg-neutral-900/20/80 px-2 py-0.5 rounded border border-neutral-800/60 shadow-inner"><?php echo $mod_count; ?></span>
+                                        <span id="breakdown-mod-count" class="text-white font-mono bg-neutral-900/20/80 px-2 py-0.5 rounded border border-neutral-800/60 shadow-inner"><?php echo $mod_count; ?></span>
                                     </div>
                                     <div class="w-full bg-neutral-900/20 h-2 rounded-full overflow-hidden border border-neutral-800 shadow-inner">
-                                        <div class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full" style="width: <?php echo $mod_pct; ?>%"></div>
+                                        <div id="breakdown-mod-bar" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full" style="width: <?php echo $mod_pct; ?>%"></div>
                                     </div>
                                 </div>
                                 <div>
                                     <div class="flex justify-between text-xs font-semibold mb-2">
                                         <span class="text-rose-450">High Risk / Critical (CC &gt; 20)</span>
-                                        <span class="text-white font-mono bg-neutral-900/20/80 px-2 py-0.5 rounded border border-neutral-800/60 shadow-inner"><?php echo $high_count; ?></span>
+                                        <span id="breakdown-high-count" class="text-white font-mono bg-neutral-900/20/80 px-2 py-0.5 rounded border border-neutral-800/60 shadow-inner"><?php echo $high_count; ?></span>
                                     </div>
                                     <div class="w-full bg-neutral-900/20 h-2 rounded-full overflow-hidden border border-neutral-800 shadow-inner">
-                                        <div class="bg-gradient-to-r from-rose-500 to-red-500 h-full rounded-full" style="width: <?php echo $high_pct; ?>%"></div>
+                                        <div id="breakdown-high-bar" class="bg-gradient-to-r from-rose-500 to-red-500 h-full rounded-full" style="width: <?php echo $high_pct; ?>%"></div>
                                     </div>
                                 </div>
                             </div>
@@ -672,7 +673,7 @@ if ($results) {
                                 </h3>
                                 <p class="text-xs text-neutral-550 mb-6">Actionable steps to optimize static code structures.</p>
                                 
-                                <div class="flex flex-col min-h-[190px]">
+                                <div id="refactoring-recommendations-container" class="flex flex-col min-h-[190px]">
                                     <?php if ($results['high_risk_functions'] == 0 && $results['avg_complexity'] <= 10): ?>
                                          <!-- Excellent code placeholder -->
                                          <div class="flex-1 flex flex-col items-center justify-center text-center py-6">
@@ -752,7 +753,7 @@ if ($results) {
                                     <th class="px-6 py-4 text-right">Status Risiko</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-850">
+                            <tbody id="mccabe-table-body" class="divide-y divide-slate-850">
                                 <?php foreach ($results['functions'] as $f): ?>
                                     <?php
                                         $cc = $f['complexity'];
@@ -805,61 +806,61 @@ if ($results) {
                                     <td class="px-6 py-4 font-mono text-red-500 font-bold">n1</td>
                                     <td class="px-6 py-4 text-neutral-500">Operator Unik</td>
                                     <td class="px-6 py-4 font-mono text-neutral-400">-</td>
-                                    <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['n1']; ?></td>
+                                    <td id="halstead-n1" class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['n1']; ?></td>
                                 </tr>
                                 <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-red-500 font-bold">n2</td>
                                     <td class="px-6 py-4 text-neutral-500">Operand Unik</td>
                                     <td class="px-6 py-4 font-mono text-neutral-400">-</td>
-                                    <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['n2']; ?></td>
+                                    <td id="halstead-n2" class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['n2']; ?></td>
                                 </tr>
                                 <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-neutral-550 font-bold">N1</td>
                                     <td class="px-6 py-4 text-neutral-500">Total Operator</td>
                                     <td class="px-6 py-4 font-mono text-neutral-400">-</td>
-                                    <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['N1']; ?></td>
+                                    <td id="halstead-N1" class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['N1']; ?></td>
                                 </tr>
                                 <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-neutral-550 font-bold">N2</td>
                                     <td class="px-6 py-4 text-neutral-500">Total Operand</td>
                                     <td class="px-6 py-4 font-mono text-neutral-400">-</td>
-                                    <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['N2']; ?></td>
+                                    <td id="halstead-N2" class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['N2']; ?></td>
                                 </tr>
                                 <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-pink-400 font-bold">n</td>
                                     <td class="px-6 py-4 text-neutral-500">Program Vocabulary</td>
                                     <td class="px-6 py-4 font-mono text-neutral-400">n1 + n2</td>
-                                    <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['n']; ?></td>
+                                    <td id="halstead-n" class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['n']; ?></td>
                                 </tr>
                                 <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-pink-400 font-bold">N</td>
                                     <td class="px-6 py-4 text-neutral-500">Program Length</td>
                                     <td class="px-6 py-4 font-mono text-neutral-400">N1 + N2</td>
-                                    <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['N']; ?></td>
+                                    <td id="halstead-N" class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['N']; ?></td>
                                 </tr>
                                 <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-white font-bold">V</td>
                                     <td class="px-6 py-4 text-neutral-500">Program Volume (Bit)</td>
                                     <td class="px-6 py-4 font-mono text-neutral-400">N * log2(n)</td>
-                                    <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['V']; ?></td>
+                                    <td id="halstead-V" class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['V']; ?></td>
                                 </tr>
                                 <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-amber-400 font-bold">D</td>
                                     <td class="px-6 py-4 text-neutral-500">Difficulty</td>
                                     <td class="px-6 py-4 font-mono text-neutral-400">(n1 / 2) * (N2 / n2)</td>
-                                    <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['D']; ?></td>
+                                    <td id="halstead-D" class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['D']; ?></td>
                                 </tr>
                                 <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-red-500 font-bold">E</td>
                                     <td class="px-6 py-4 text-neutral-500">Programming Effort</td>
                                     <td class="px-6 py-4 font-mono text-neutral-400">D * V</td>
-                                    <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['E']; ?></td>
+                                    <td id="halstead-E" class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['E']; ?></td>
                                 </tr>
                                 <tr class="hover:bg-neutral-900/40">
                                     <td class="px-6 py-4 font-mono text-sky-400 font-bold">T</td>
                                     <td class="px-6 py-4 text-neutral-500">Time Required (Estimasi)</td>
                                     <td class="px-6 py-4 font-mono text-neutral-400">E / 18 (Detik)</td>
-                                    <td class="px-6 py-4 text-right font-semibold text-white font-mono">
+                                    <td id="halstead-T" class="px-6 py-4 text-right font-semibold text-white font-mono">
                                         <?php echo $results['T'] > 60 ? round($results['T']/60, 2).' Menit' : $results['T'].' Detik'; ?>
                                     </td>
                                 </tr>
@@ -867,7 +868,7 @@ if ($results) {
                                     <td class="px-6 py-4 font-mono text-red-400 font-bold">B</td>
                                     <td class="px-6 py-4 text-neutral-500">Delivered Bugs Estimate</td>
                                     <td class="px-6 py-4 font-mono text-neutral-400">V / 3000</td>
-                                    <td class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['B']; ?></td>
+                                    <td id="halstead-B" class="px-6 py-4 text-right font-semibold text-white font-mono"><?php echo $results['B']; ?></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -940,7 +941,7 @@ if ($results) {
                                         <th class="px-6 py-4 text-right">Total Operand</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-850">
+                                <tbody id="files-report-table-body" class="divide-y divide-slate-850">
                                     <?php foreach ($results['files_report'] as $file): ?>
                                         <tr class="hover:bg-neutral-900/40">
                                             <td class="px-6 py-4 font-mono font-bold text-red-500"><?php echo htmlspecialchars($file['name']); ?></td>
@@ -965,9 +966,9 @@ if ($results) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="glass-card border border-neutral-800 rounded-2xl p-5 shadow-xl">
                             <h4 class="text-xs font-bold text-red-500 uppercase tracking-wider mb-4 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg> Operator Unik (<?php echo $results['n1']; ?>)</span>
+                                <span class="flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg> Operator Unik (<span id="parsed-operators-count"><?php echo $results['n1']; ?></span>)</span>
                             </h4>
-                            <div class="flex flex-wrap gap-2 p-4 bg-neutral-900/20 rounded-xl border border-neutral-800 min-h-[160px] align-content-start">
+                            <div id="unique-operators-container" class="flex flex-wrap gap-2 p-4 bg-neutral-900/20 rounded-xl border border-neutral-800 min-h-[160px] align-content-start">
                                 <?php if (!empty($results['unique_operators_list'])): ?>
                                     <?php foreach ($results['unique_operators_list'] as $op): ?>
                                         <code class="px-2.5 py-1 text-xs bg-slate-900 border border-neutral-800 rounded text-neutral-300 font-mono hover:border-red-500/30 transition-colors"><?php echo htmlspecialchars($op); ?></code>
@@ -979,9 +980,9 @@ if ($results) {
                         </div>
                         <div class="glass-card border border-neutral-800 rounded-2xl p-5 shadow-xl">
                             <h4 class="text-xs font-bold text-neutral-550 uppercase tracking-wider mb-4 flex items-center justify-between">
-                                <span>📦 Operand Unik (<?php echo $results['n2']; ?>)</span>
+                                <span>📦 Operand Unik (<span id="parsed-operands-count"><?php echo $results['n2']; ?></span>)</span>
                             </h4>
-                            <div class="flex flex-wrap gap-2 p-4 bg-neutral-900/20 rounded-xl border border-neutral-800 min-h-[160px] align-content-start">
+                            <div id="unique-operands-container" class="flex flex-wrap gap-2 p-4 bg-neutral-900/20 rounded-xl border border-neutral-800 min-h-[160px] align-content-start">
                                 <?php if (!empty($results['unique_operands_list'])): ?>
                                     <?php foreach ($results['unique_operands_list'] as $operand): ?>
                                         <code class="px-2.5 py-1 text-xs bg-slate-900 border border-neutral-800 rounded text-neutral-300 font-mono hover:border-red-500/30 transition-colors"><?php echo htmlspecialchars($operand); ?></code>
@@ -1024,6 +1025,116 @@ if ($results) {
             <?php endif; ?>
         </div>
 
+        <!-- ==================== VIEW: HISTORY LOGS ==================== -->
+        <div id="main-view-history" class="main-tab-content">
+            <!-- Header Block -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                    <h1 class="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+                        <span class="px-2.5 py-2.5 bg-neutral-900/40 border border-neutral-800 rounded-xl text-red-500 text-sm flex items-center justify-center">
+                            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                            </svg>
+                        </span>
+                        Riwayat Analisis Kode
+                    </h1>
+                    <p class="text-xs text-neutral-550 mt-1">Daftar lengkap berkas dan folder yang telah Anda analisis sebelumnya secara real-time.</p>
+                </div>
+                <!-- Action Buttons -->
+                <div class="flex items-center gap-3">
+                    <button id="btn-clear-all-history" onclick="confirmClearHistory()" class="px-4 py-2 text-xs font-bold text-red-500 hover:text-white border border-red-500/35 hover:bg-red-650 hover:border-red-550 rounded-lg shadow-md transition duration-200 flex items-center gap-1.5 group">
+                        <svg class="w-3.5 h-3.5 text-red-500 group-hover:text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Hapus Semua Riwayat
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Bar (Runs, Files, Max CC) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="glass-card p-5 rounded-2xl border-l-4 border-l-red-500 flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold text-neutral-555 block uppercase tracking-wider mb-1">TOTAL ANALISIS</span>
+                        <span id="history-stat-runs" class="text-2xl font-extrabold text-white font-mono">0</span>
+                    </div>
+                    <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <div class="glass-card p-5 rounded-2xl border-l-4 border-l-cyan-500 flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold text-neutral-555 block uppercase tracking-wider mb-1">TOTAL BERKAS DIANALISIS</span>
+                        <span id="history-stat-files" class="text-2xl font-extrabold text-white font-mono">0</span>
+                    </div>
+                    <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                    </svg>
+                </div>
+                <div class="glass-card p-5 rounded-2xl border-l-4 border-l-amber-500 flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold text-neutral-555 block uppercase tracking-wider mb-1">MAX COMPLEXITY (CC)</span>
+                        <span id="history-stat-maxcc" class="text-2xl font-extrabold text-white font-mono">0</span>
+                    </div>
+                    <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Filter & Search Panel -->
+            <div class="glass-card rounded-2xl p-4 mb-6 border border-neutral-800 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div class="relative w-full sm:max-w-md">
+                    <input type="text" id="history-search" oninput="filterHistory()" placeholder="Cari riwayat berdasarkan nama file/folder..." class="w-full pl-10 pr-4 py-2 border border-neutral-850 rounded-xl focus:ring-2 focus:ring-red-500/50 bg-neutral-950 text-neutral-100 border-neutral-800/80 outline-none text-xs transition duration-205">
+                    <span class="absolute left-3.5 top-3 text-neutral-550">
+                        <svg class="w-4 h-4 text-neutral-550" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-neutral-500">
+                    <span>Urutkan:</span>
+                    <select id="history-sort" onchange="sortHistory()" class="bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-neutral-300 outline-none focus:ring-1 focus:ring-red-500/40">
+                        <option value="newest">Terbaru (Waktu)</option>
+                        <option value="oldest">Terlama (Waktu)</option>
+                        <option value="files-desc">Berkas Terbanyak</option>
+                        <option value="cc-desc">Kompleksitas Tertinggi</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- History Cards Container -->
+            <div id="history-list-container" class="space-y-4">
+                <!-- Dynamically injected history cards -->
+            </div>
+
+            <!-- Empty State fallback -->
+            <div id="history-empty-state" class="glass-card border border-neutral-850 border-dashed rounded-2xl p-16 text-center text-slate-550 flex flex-col items-center justify-center min-h-[350px] hidden">
+                <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-3xl mb-4 border border-neutral-800 flex items-center justify-center">
+                    <svg class="w-8 h-8 text-neutral-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"></path>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-bold text-neutral-300 mb-1">Belum Ada Riwayat Analisis</h3>
+                <p class="text-xs text-neutral-550 max-w-sm">Jalankan proses analisis terlebih dahulu di Console Analyzer untuk memunculkan laporan metrik.</p>
+                <button onclick="switchMainTab('analyzer')" class="mt-4 px-4 py-2 bg-white hover:bg-neutral-200 text-neutral-950 text-xs font-bold rounded-lg transition duration-200 shadow-md">
+                    Ke Analyzer Console
+                </button>
+            </div>
+        </div>
+
+        <!-- Custom Delete Confirmation Modal -->
+        <div id="confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm hidden">
+            <div class="glass-card rounded-2xl border border-neutral-800 max-w-md w-full p-6 shadow-2xl animate-fadeIn">
+                <h3 class="text-lg font-bold text-white mb-2">Hapus Semua Riwayat?</h3>
+                <p class="text-xs text-neutral-550 mb-6 leading-relaxed">Tindakan ini akan menghapus seluruh catatan riwayat analisis secara permanen dari browser Anda. Tindakan ini tidak dapat dibatalkan.</p>
+                <div class="flex justify-end gap-3">
+                    <button onclick="closeConfirmModal()" class="px-4 py-2 bg-neutral-900 hover:bg-slate-800 text-neutral-300 rounded-lg text-xs font-bold transition">Batal</button>
+                    <button onclick="executeClearHistory()" class="px-4 py-2 bg-red-650 hover:bg-red-550 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-red-600/10">Ya, Hapus Semua</button>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <!-- Footer -->
@@ -1036,9 +1147,13 @@ if ($results) {
     <!-- JavaScript logic -->
     <script>
         // Store parsed function structure in JavaScript for CFG rendering
-        const parsedFunctions = <?php echo $results ? json_encode($results['functions']) : '[]'; ?>;
+        let parsedFunctions = <?php echo $results ? json_encode($results['functions']) : '[]'; ?>;
+        let activeResults = <?php echo $results ? json_encode($results) : 'null'; ?>;
+        let activeSource = <?php echo json_encode($analysis_source); ?>;
+        let activeTimestamp = <?php echo json_encode(date('n/j/Y, g:i:s A')); ?>;
+        let activeCodeInput = <?php echo json_encode($code_input); ?>;
 
-        // Main Tab Switcher (Home vs Analyzer Console vs Results)
+        // Main Tab Switcher (Home vs Analyzer Console vs Results vs History)
         function switchMainTab(tabId) {
             document.querySelectorAll('.main-tab-content').forEach(view => view.classList.remove('active'));
             const activeView = document.getElementById('main-view-' + tabId);
@@ -1046,17 +1161,21 @@ if ($results) {
 
             const btnHome = document.getElementById('nav-home');
             const btnCalc = document.getElementById('nav-analyzer');
+            const btnHist = document.getElementById('nav-history');
+            
+            // Reset nav styles
+            if (btnHome) btnHome.className = 'text-sm font-semibold text-neutral-500 hover:text-white transition-colors duration-200';
+            if (btnCalc) btnCalc.className = 'text-sm font-semibold text-neutral-500 hover:text-white transition-colors duration-200';
+            if (btnHist) btnHist.className = 'text-sm font-semibold text-neutral-500 hover:text-white transition-colors duration-200';
             
             // Set styles based on tab selection
             if (tabId === 'home') {
-                btnHome.className = 'text-sm font-semibold text-red-500';
-                btnCalc.className = 'text-sm font-semibold text-neutral-500 hover:text-white';
+                if (btnHome) btnHome.className = 'text-sm font-semibold text-red-500 transition-colors duration-200';
             } else if (tabId === 'analyzer') {
-                btnCalc.className = 'text-sm font-semibold text-red-500';
-                btnHome.className = 'text-sm font-semibold text-neutral-500 hover:text-white';
-            } else {
-                btnHome.className = 'text-sm font-semibold text-neutral-500 hover:text-white';
-                btnCalc.className = 'text-sm font-semibold text-neutral-500 hover:text-white';
+                if (btnCalc) btnCalc.className = 'text-sm font-semibold text-red-500 transition-colors duration-200';
+            } else if (tabId === 'history') {
+                if (btnHist) btnHist.className = 'text-sm font-semibold text-red-500 transition-colors duration-200';
+                renderHistory();
             }
         }
 
@@ -1165,27 +1284,28 @@ if ($results) {
         // CSV Export function for Halstead metrics
         // CSV Export function for Halstead metrics
         function exportToCSV() {
+            if (!activeResults) return;
             let csvContent = "data:text/csv;charset=utf-8,";
             
             // Section 1: Global Summary
             csvContent += "=== GLOBAL SUMMARY METRICS ===\r\n";
             csvContent += '"Metric","Symbol","Value","Description"\r\n';
             const summary = [
-                ["Total Files", "total_files", "<?php echo $results['total_files'] ?? '0'; ?>", "Jumlah Berkas"],
-                ["Total Functions", "total_functions", "<?php echo $results['total_functions'] ?? '0'; ?>", "Jumlah Fungsi"],
-                ["Average McCabe Complexity", "avg_complexity", "<?php echo $results['avg_complexity'] ?? '0'; ?>", "Rata-rata Cyclomatic Complexity"],
-                ["High Risk Functions", "high_risk_functions", "<?php echo $results['high_risk_functions'] ?? '0'; ?>", "Fungsi Risiko Tinggi"],
-                ["Estimated Bugs", "B", "<?php echo $results['B'] ?? '0'; ?>", "Potensi Bug Bawaan"],
-                ["Total Lines", "lines", "<?php echo $results['lines'] ?? '0'; ?>", "Jumlah Baris Kode"],
-                ["Vocabulary", "n", "<?php echo $results['n'] ?? '0'; ?>", "Vocabulary (n1 + n2)"],
-                ["Length", "N", "<?php echo $results['N'] ?? '0'; ?>", "Length (N1 + N2)"],
-                ["Volume", "V", "<?php echo $results['V'] ?? '0'; ?>", "Program Volume (Bits)"],
-                ["Difficulty", "D", "<?php echo $results['D'] ?? '0'; ?>", "Difficulty"],
-                ["Effort", "E", "<?php echo $results['E'] ?? '0'; ?>", "Programming Effort"],
-                ["Time Required", "T", "<?php echo $results['T'] ?? '0'; ?>", "Time Required (Seconds)"]
+                ["Total Files", "total_files", activeResults.total_files, "Jumlah Berkas"],
+                ["Total Functions", "total_functions", activeResults.total_functions, "Jumlah Fungsi"],
+                ["Average McCabe Complexity", "avg_complexity", activeResults.avg_complexity, "Rata-rata Cyclomatic Complexity"],
+                ["High Risk Functions", "high_risk_functions", activeResults.high_risk_functions, "Fungsi Risiko Tinggi"],
+                ["Estimated Bugs", "B", activeResults.B, "Potensi Bug Bawaan"],
+                ["Total Lines", "lines", activeResults.lines, "Jumlah Baris Kode"],
+                ["Vocabulary", "n", activeResults.n, "Vocabulary (n1 + n2)"],
+                ["Length", "N", activeResults.N, "Length (N1 + N2)"],
+                ["Volume", "V", activeResults.V, "Program Volume (Bits)"],
+                ["Difficulty", "D", activeResults.D, "Difficulty"],
+                ["Effort", "E", activeResults.E, "Programming Effort"],
+                ["Time Required", "T", activeResults.T, "Time Required (Seconds)"]
             ];
             summary.forEach(function(rowArray) {
-                let row = rowArray.map(val => `"${val.replace(/"/g, '""')}"`).join(",");
+                let row = rowArray.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
                 csvContent += row + "\r\n";
             });
             csvContent += "\r\n";
@@ -1193,35 +1313,33 @@ if ($results) {
             // Section 2: Files Report
             csvContent += "=== FILES REPORT ===\r\n";
             csvContent += '"File Name","Lines of Code (LOC)","Functions Count","Average Complexity (CC)","Volume (V)","Difficulty (D)","Est. Bugs (B)","Total Operators","Total Operands"\r\n';
-            <?php if (!empty($results['files_report'])): ?>
-                <?php foreach ($results['files_report'] as $file): ?>
-                    csvContent += `"${<?php echo json_encode($file['name']); ?>}","${<?php echo json_encode($file['lines']); ?>}","${<?php echo json_encode($file['functions_count']); ?>}","${<?php echo json_encode($file['avg_complexity']); ?>}","${<?php echo json_encode($file['volume']); ?>}","${<?php echo json_encode($file['difficulty']); ?>}","${<?php echo json_encode($file['bugs']); ?>}","${<?php echo json_encode($file['operators_count']); ?>}","${<?php echo json_encode($file['operands_count']); ?>}"\r\n`;
-                <?php endforeach; ?>
-            <?php endif; ?>
+            if (activeResults.files_report && activeResults.files_report.length > 0) {
+                activeResults.files_report.forEach(function(file) {
+                    csvContent += `"${file.name}","${file.lines}","${file.functions_count}","${file.avg_complexity}","${file.volume}","${file.difficulty}","${file.bugs}","${file.operators_count}","${file.operands_count}"\r\n`;
+                });
+            }
             csvContent += "\r\n";
 
             // Section 3: Functions Report
             csvContent += "=== FUNCTIONS & MCCABE COMPLEXITY ===\r\n";
             csvContent += '"Function Name","Source File","Line Range","Complexity (CC)","Risk Status"\r\n';
-            <?php if (!empty($results['functions'])): ?>
-                <?php foreach ($results['functions'] as $f): 
-                    $cc = $f['complexity'];
-                    if ($cc <= 10) {
-                        $status = 'Safe';
-                    } elseif ($cc <= 20) {
-                        $status = 'Moderate';
-                    } else {
-                        $status = 'High Risk';
+            if (activeResults.functions && activeResults.functions.length > 0) {
+                activeResults.functions.forEach(function(f) {
+                    let cc = f.complexity;
+                    let status = 'Safe';
+                    if (cc > 20) {
+                        status = 'High Risk';
+                    } else if (cc > 10) {
+                        status = 'Moderate';
                     }
-                ?>
-                    csvContent += `"${<?php echo json_encode($f['name']); ?>}","${<?php echo json_encode($f['file']); ?>}","${<?php echo json_encode($f['start_line'] . ' - ' . $f['end_line']); ?>}","${<?php echo json_encode($cc); ?>}","${<?php echo json_encode($status); ?>}"\r\n`;
-                <?php endforeach; ?>
-            <?php endif; ?>
+                    csvContent += `"${f.name}","${f.file}","${f.start_line} - ${f.end_line}","${cc}","${status}"\r\n`;
+                });
+            }
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "code_pulse_report.csv");
+            link.setAttribute("download", `code_pulse_report_${activeSource.toLowerCase().replace(/[^a-z0-9]/g, '_')}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -1710,9 +1828,558 @@ if ($results) {
             clockEl.textContent = `${month}/${day}/${year}, ${hours}:${minutes}:${seconds} ${ampm}`;
         }
 
+        // --- HISTORY MANAGEMENT LOGIC ---
+
+        function loadHistory() {
+            try {
+                return JSON.parse(localStorage.getItem('codepulse_history')) || [];
+            } catch (e) {
+                console.error('Failed to parse history: ', e);
+                return [];
+            }
+        }
+
+        function saveToHistory(source, results, codeInput) {
+            if (!results) return;
+            let history = loadHistory();
+            
+            // Deduplication: check if the exact same analysis was saved very recently (e.g., within 3 seconds)
+            const now = Date.now();
+            const isDuplicate = history.some(item => {
+                return item.source === source && 
+                       item.results.lines === results.lines &&
+                       item.results.avg_complexity === results.avg_complexity &&
+                       item.results.total_functions === results.total_functions &&
+                       (now - item.timestamp < 3000); // 3 seconds threshold
+            });
+            
+            if (isDuplicate) return;
+            
+            const item = {
+                id: 'run_' + now + '_' + Math.random().toString(36).substr(2, 5),
+                source: source,
+                timestamp: now,
+                results: results,
+                codeInput: codeInput
+            };
+            
+            history.unshift(item);
+            if (history.length > 50) {
+                history = history.slice(0, 50);
+            }
+            localStorage.setItem('codepulse_history', JSON.stringify(history));
+        }
+
+        function deleteHistoryItem(id, event) {
+            if (event) event.stopPropagation();
+            let history = loadHistory();
+            history = history.filter(item => item.id !== id);
+            localStorage.setItem('codepulse_history', JSON.stringify(history));
+            renderHistory();
+        }
+
+        function confirmClearHistory() {
+            const modal = document.getElementById('confirm-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function executeClearHistory() {
+            localStorage.removeItem('codepulse_history');
+            closeConfirmModal();
+            renderHistory();
+        }
+
+        function getIndonesianDateTime(timestamp) {
+            const date = new Date(timestamp);
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            
+            const dayName = days[date.getDay()];
+            const day = date.getDate();
+            const monthName = months[date.getMonth()];
+            const year = date.getFullYear();
+            
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            
+            return `${dayName}, ${day} ${monthName} ${year} pukul ${hours}:${minutes}:${seconds}`;
+        }
+
+        function getRelativeTime(timestamp) {
+            const diffMs = Date.now() - timestamp;
+            const diffSec = Math.floor(diffMs / 1000);
+            const diffMin = Math.floor(diffSec / 60);
+            const diffHour = Math.floor(diffMin / 60);
+            const diffDay = Math.floor(diffHour / 24);
+
+            if (diffSec < 5) return 'Baru saja';
+            if (diffSec < 60) return `${diffSec} detik yang lalu`;
+            if (diffMin < 60) return `${diffMin} menit yang lalu`;
+            if (diffHour < 24) return `${diffHour} jam yang lalu`;
+            if (diffDay === 1) return 'Kemarin';
+            return `${diffDay} hari yang lalu`;
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list-container');
+            const emptyState = document.getElementById('history-empty-state');
+            const clearAllBtn = document.getElementById('btn-clear-all-history');
+            
+            if (!container) return;
+
+            let history = loadHistory();
+            
+            // Search filter
+            const searchVal = document.getElementById('history-search')?.value.toLowerCase().trim() || '';
+            if (searchVal) {
+                history = history.filter(item => item.source.toLowerCase().includes(searchVal));
+            }
+
+            // Sort logic
+            const sortVal = document.getElementById('history-sort')?.value || 'newest';
+            if (sortVal === 'newest') {
+                history.sort((a, b) => b.timestamp - a.timestamp);
+            } else if (sortVal === 'oldest') {
+                history.sort((a, b) => a.timestamp - b.timestamp);
+            } else if (sortVal === 'files-desc') {
+                history.sort((a, b) => b.results.total_files - a.results.total_files);
+            } else if (sortVal === 'cc-desc') {
+                history.sort((a, b) => b.results.avg_complexity - a.results.avg_complexity);
+            }
+
+            // Update stats indicators
+            const runsStat = document.getElementById('history-stat-runs');
+            const filesStat = document.getElementById('history-stat-files');
+            const ccStat = document.getElementById('history-stat-maxcc');
+
+            const allHistory = loadHistory();
+            let totalFilesCount = 0;
+            let maxCC = 0;
+
+            allHistory.forEach(item => {
+                totalFilesCount += item.results.total_files || 0;
+                if (item.results.avg_complexity > maxCC) {
+                    maxCC = item.results.avg_complexity;
+                }
+            });
+
+            if (runsStat) runsStat.textContent = allHistory.length;
+            if (filesStat) filesStat.textContent = totalFilesCount;
+            if (ccStat) ccStat.textContent = maxCC ? Number(maxCC).toFixed(1) : '0';
+
+            if (history.length === 0) {
+                container.innerHTML = '';
+                container.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                if (clearAllBtn) clearAllBtn.disabled = true;
+                if (clearAllBtn) clearAllBtn.classList.add('opacity-40', 'cursor-not-allowed');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            if (clearAllBtn) clearAllBtn.disabled = false;
+            if (clearAllBtn) clearAllBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+
+            let listHtml = '';
+            history.forEach(item => {
+                let badgeText = 'Paste';
+                let badgeClass = 'bg-red-500/10 text-red-400 border-red-500/20';
+                if (item.source.includes('Folder')) {
+                    badgeText = 'Folder';
+                    badgeClass = 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+                } else if (item.source !== 'Teks Kode yang Di-paste' && !item.source.includes('Folder')) {
+                    badgeText = 'File';
+                    badgeClass = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                }
+
+                // Global Rating badge for history card
+                let rating = 'Good';
+                let ratingColor = 'text-sky-400';
+                if (item.results.avg_complexity > 20) {
+                    rating = 'Refactor';
+                    ratingColor = 'text-rose-500';
+                } else if (item.results.avg_complexity > 10) {
+                    rating = 'Moderate';
+                    ratingColor = 'text-amber-500';
+                }
+
+                listHtml += `
+                    <div class="glass-card p-6 rounded-2xl border border-neutral-800 hover:border-red-500/20 transition-all duration-300 hover:scale-[1.01] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 group">
+                        <div class="space-y-3 flex-1">
+                            <div class="flex items-center gap-3">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${badgeText}</span>
+                                <h4 class="text-sm font-bold text-white group-hover:text-red-500 transition duration-200 truncate max-w-sm md:max-w-md">${escapeHtml(item.source)}</h4>
+                            </div>
+                            <div class="flex flex-col gap-1 text-[11px] text-neutral-550">
+                                <div class="flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-neutral-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span>${getIndonesianDateTime(item.timestamp)}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 font-medium text-red-450/80">
+                                    <svg class="w-3.5 h-3.5 text-red-450/80" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span>${getRelativeTime(item.timestamp)}</span>
+                                </div>
+                            </div>
+                            <!-- Mini stats grid -->
+                            <div class="flex flex-wrap gap-2 pt-2">
+                                <span class="px-2.5 py-1 bg-neutral-900/40 border border-neutral-800/80 rounded-lg text-[10px] font-mono text-neutral-450 flex items-center gap-1.5">
+                                    <svg class="w-3 h-3 text-neutral-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                    </svg>
+                                    ${item.results.total_files} Berkas
+                                </span>
+                                <span class="px-2.5 py-1 bg-neutral-900/40 border border-neutral-800/80 rounded-lg text-[10px] font-mono text-neutral-450 flex items-center gap-1.5">
+                                    <svg class="w-3 h-3 text-neutral-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                    ${item.results.total_functions} Fungsi
+                                </span>
+                                <span class="px-2.5 py-1 bg-neutral-900/40 border border-neutral-800/80 rounded-lg text-[10px] font-mono text-neutral-450 flex items-center gap-1.5">
+                                    <svg class="w-3 h-3 text-neutral-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                    </svg>
+                                    CC: ${Number(item.results.avg_complexity).toFixed(1)}
+                                </span>
+                                <span class="px-2.5 py-1 bg-neutral-900/40 border border-neutral-800/80 rounded-lg text-[10px] font-mono text-neutral-450 flex items-center gap-1.5">
+                                    <svg class="w-3 h-3 text-neutral-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    LOC: ${item.results.lines}
+                                </span>
+                                <span class="px-2.5 py-1 bg-neutral-900/40 border border-neutral-800/80 rounded-lg text-[10px] font-mono ${ratingColor} flex items-center gap-1.5">
+                                    <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                                    </svg>
+                                    Rating: ${rating}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 w-full md:w-auto justify-end">
+                            <button onclick='loadAnalysisData(${JSON.stringify(item.results).replace(/'/g, "&#39;")}, ${JSON.stringify(item.source).replace(/'/g, "&#39;")}, ${JSON.stringify(getIndonesianDateTime(item.timestamp)).replace(/'/g, "&#39;")}, ${JSON.stringify(item.codeInput).replace(/'/g, "&#39;")})' class="px-4 py-2 bg-gradient-to-r from-red-650 to-red-550 hover:from-red-550 hover:to-red-450 text-white text-xs font-bold rounded-xl transition duration-300 shadow-md active:scale-95 flex-1 md:flex-initial text-center">
+                                Muat Hasil
+                            </button>
+                            <button onclick="deleteHistoryItem('${item.id}', event)" class="p-2 border border-neutral-800 hover:bg-red-500/10 hover:border-red-500/30 text-neutral-500 hover:text-red-500 rounded-xl transition duration-200 flex items-center justify-center" title="Hapus catatan">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = listHtml;
+        }
+
+        function filterHistory() {
+            renderHistory();
+        }
+
+        function sortHistory() {
+            renderHistory();
+        }
+
+        // Auto render relative times update interval
+        setInterval(() => {
+            const activeTab = document.getElementById('main-view-history');
+            if (activeTab && activeTab.classList.contains('active')) {
+                renderHistory();
+            }
+        }, 15000);
+
+        function loadAnalysisData(results, source, timestamp, codeInput) {
+            // Update global state
+            activeResults = results;
+            activeSource = source;
+            activeTimestamp = timestamp;
+            activeCodeInput = codeInput;
+            parsedFunctions = results.functions;
+
+            // 1. Update program header details
+            const sourceTitleEl = document.getElementById('analysis-source-title');
+            if (sourceTitleEl) sourceTitleEl.textContent = source;
+            
+            const clockEl = document.getElementById('live-clock');
+            if (clockEl) clockEl.textContent = timestamp;
+
+            // 2. Update overview cards
+            const totalFilesEl = document.getElementById('res-total-files');
+            if (totalFilesEl) totalFilesEl.textContent = results.total_files;
+
+            const totalFunctionsEl = document.getElementById('res-total-functions');
+            if (totalFunctionsEl) totalFunctionsEl.textContent = results.total_functions;
+
+            const avgComplexityEl = document.getElementById('res-avg-complexity');
+            if (avgComplexityEl) avgComplexityEl.textContent = Number(results.avg_complexity).toFixed(1);
+
+            const highRiskEl = document.getElementById('res-high-risk-functions');
+            if (highRiskEl) highRiskEl.textContent = results.high_risk_functions;
+
+            const bugsEl = document.getElementById('res-estimated-bugs');
+            if (bugsEl) bugsEl.textContent = Number(results.B).toFixed(3);
+
+            // Update global rating badge
+            let rating = 'Good';
+            let ratingColor = 'text-sky-400';
+            let ratingDot = 'bg-sky-400';
+            let ratingBorder = 'border-l-sky-500';
+            if (results.avg_complexity > 20) {
+                rating = 'Refactor';
+                ratingColor = 'text-rose-500';
+                ratingDot = 'bg-rose-500';
+                ratingBorder = 'border-l-rose-500';
+            } else if (results.avg_complexity > 10) {
+                rating = 'Moderate';
+                ratingColor = 'text-amber-500';
+                ratingDot = 'bg-amber-500';
+                ratingBorder = 'border-l-amber-500';
+            }
+            
+            const ratingCard = document.getElementById('res-global-rating-card');
+            if (ratingCard) {
+                ratingCard.className = `glass-card p-5 rounded-2xl border-l-4 ${ratingBorder} hover:border-slate-700/80 transition duration-305 flex flex-col justify-between min-h-[110px]`;
+            }
+            
+            const ratingContainer = document.getElementById('res-global-rating-container');
+            if (ratingContainer) {
+                ratingContainer.innerHTML = `
+                    <span class="text-xl font-extrabold font-mono ${ratingColor} flex items-center gap-2 bg-neutral-900/20/60 px-2.5 py-1 rounded-xl border border-neutral-800/60 shadow-inner">
+                        <span class="w-2.5 h-2.5 rounded-full ${ratingDot} inline-block animate-pulse"></span>
+                        ${rating}
+                    </span>
+                `;
+            }
+
+            // 3. Update Complexity Breakdown
+            const totalFuncs = Math.max(1, results.total_functions);
+            const safeCount = results.cc_breakdown.safe;
+            const modCount = results.cc_breakdown.moderate;
+            const highCount = results.cc_breakdown.high;
+            
+            const safePct = (safeCount / totalFuncs) * 100;
+            const modPct = (modCount / totalFuncs) * 100;
+            const highPct = (highCount / totalFuncs) * 100;
+
+            const safeCountEl = document.getElementById('breakdown-safe-count');
+            if (safeCountEl) safeCountEl.textContent = safeCount;
+            const safeBarEl = document.getElementById('breakdown-safe-bar');
+            if (safeBarEl) safeBarEl.style.width = safePct + '%';
+
+            const modCountEl = document.getElementById('breakdown-mod-count');
+            if (modCountEl) modCountEl.textContent = modCount;
+            const modBarEl = document.getElementById('breakdown-mod-bar');
+            if (modBarEl) modBarEl.style.width = modPct + '%';
+
+            const highCountEl = document.getElementById('breakdown-high-count');
+            if (highCountEl) highCountEl.textContent = highCount;
+            const highBarEl = document.getElementById('breakdown-high-bar');
+            if (highBarEl) highBarEl.style.width = highPct + '%';
+
+            // 4. Update Refactoring Recommendations
+            const recContainer = document.getElementById('refactoring-recommendations-container');
+            if (recContainer) {
+                if (results.high_risk_functions === 0 && results.avg_complexity <= 10) {
+                    recContainer.innerHTML = `
+                        <div class="flex-1 flex flex-col items-center justify-center text-center py-6">
+                            <div class="w-14 h-14 bg-neutral-900/20 border border-slate-500/20 text-red-500 rounded-full flex items-center justify-center mb-4 relative">
+                                <span class="absolute inset-0 rounded-full bg-emerald-500/15 animate-ping opacity-75"></span>
+                                <svg class="w-6 h-6 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                                </svg>
+                            </div>
+                            <h4 class="text-sm font-bold text-white mb-1">System Secure &amp; Clean</h4>
+                            <p class="text-xs text-neutral-550">All logic flows are highly optimized. No critical complexity risk detected.</p>
+                        </div>
+                    `;
+                } else {
+                    let recHtml = '<div class="space-y-4 overflow-y-auto max-h-[220px] pr-2">';
+                    let shown = 0;
+                    results.functions.forEach(f => {
+                        if (f.complexity > 10) {
+                            shown++;
+                            let level = f.complexity > 20 ? 'Critical' : 'Moderate';
+                            let badgeColor = f.complexity > 20 ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                            recHtml += `
+                                <div class="p-3 bg-neutral-900/20 border border-neutral-800 rounded-xl flex items-start gap-3">
+                                    <span class="text-sm mt-0.5">⚠️</span>
+                                    <div class="flex-1">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <h5 class="text-xs font-bold text-white font-mono">${escapeHtml(f.name)}()</h5>
+                                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold border ${badgeColor}">
+                                                CC: ${f.complexity} (${level})
+                                            </span>
+                                        </div>
+                                        <p class="text-[11px] text-neutral-550 leading-relaxed">
+                                            Function has high McCabe complexity. Consider splitting it into smaller helpers and reducing nested branching statements to simplify control flows.
+                                        </p>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                    if (shown === 0 && results.D > 15) {
+                        recHtml += `
+                            <div class="p-3 bg-neutral-900/20 border border-neutral-800 rounded-xl flex items-start gap-3">
+                                <span class="text-sm mt-0.5">💡</span>
+                                <div class="flex-1">
+                                    <h5 class="text-xs font-bold text-white">Global Difficulty is High</h5>
+                                    <p class="text-[11px] text-neutral-550 leading-relaxed">
+                                        Overall logic difficulty ($D = ${results.D}$) is relatively high. Extract nested operations into class methods or separate functions to reduce cognitive strain.
+                                    </p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    recHtml += '</div>';
+                    recContainer.innerHTML = recHtml;
+                }
+            }
+
+            // 5. Update McCabe Table
+            const mccabeTableBody = document.getElementById('mccabe-table-body');
+            if (mccabeTableBody) {
+                let tableHtml = '';
+                results.functions.forEach(f => {
+                    let cc = f.complexity;
+                    let status = 'Safe';
+                    let badge = 'bg-sky-500/10 text-sky-400 border-sky-500/20';
+                    if (cc > 20) {
+                        status = 'High Risk';
+                        badge = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+                    } else if (cc > 10) {
+                        status = 'Moderate';
+                        badge = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                    }
+                    tableHtml += `
+                        <tr class="hover:bg-neutral-900/40">
+                            <td class="px-6 py-4 font-mono font-bold text-white">${escapeHtml(f.name)}()</td>
+                            <td class="px-6 py-4 text-neutral-550 font-mono">${escapeHtml(f.file)}</td>
+                            <td class="px-6 py-4 font-mono text-neutral-550">${f.start_line} - ${f.end_line}</td>
+                            <td class="px-6 py-4 text-center font-bold font-mono text-white">${cc}</td>
+                            <td class="px-6 py-4 text-right">
+                                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold border ${badge}">
+                                    ${status}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                });
+                mccabeTableBody.innerHTML = tableHtml;
+            }
+
+            // 6. Update Halstead metrics
+            const hn1 = document.getElementById('halstead-n1'); if (hn1) hn1.textContent = results.n1;
+            const hn2 = document.getElementById('halstead-n2'); if (hn2) hn2.textContent = results.n2;
+            const hN1 = document.getElementById('halstead-N1'); if (hN1) hN1.textContent = results.N1;
+            const hN2 = document.getElementById('halstead-N2'); if (hN2) hN2.textContent = results.N2;
+            const hn = document.getElementById('halstead-n'); if (hn) hn.textContent = results.n;
+            const hN = document.getElementById('halstead-N'); if (hN) hN.textContent = results.N;
+            const hV = document.getElementById('halstead-V'); if (hV) hV.textContent = results.V;
+            const hD = document.getElementById('halstead-D'); if (hD) hD.textContent = results.D;
+            const hE = document.getElementById('halstead-E'); if (hE) hE.textContent = results.E;
+            const hT = document.getElementById('halstead-T'); if (hT) {
+                hT.textContent = results.T > 60 ? (results.T / 60).toFixed(2) + ' Menit' : results.T + ' Detik';
+            }
+            const hB = document.getElementById('halstead-B'); if (hB) hB.textContent = results.B;
+
+            // 7. Update Files Report Table
+            const filesReportBody = document.getElementById('files-report-table-body');
+            if (filesReportBody) {
+                let filesHtml = '';
+                results.files_report.forEach(file => {
+                    filesHtml += `
+                        <tr class="hover:bg-neutral-900/40">
+                            <td class="px-6 py-4 font-mono font-bold text-red-500">${escapeHtml(file.name)}</td>
+                            <td class="px-6 py-4 font-mono text-white">${file.lines}</td>
+                            <td class="px-6 py-4 text-center font-mono text-neutral-550">${file.functions_count}</td>
+                            <td class="px-6 py-4 text-center font-bold font-mono text-white">${file.avg_complexity}</td>
+                            <td class="px-6 py-4 text-center font-mono text-cyan-450">${file.volume}</td>
+                            <td class="px-6 py-4 text-center font-mono text-amber-450">${file.difficulty}</td>
+                            <td class="px-6 py-4 text-center font-mono text-rose-400">${file.bugs}</td>
+                            <td class="px-6 py-4 text-center font-mono text-neutral-550">${file.operators_count}</td>
+                            <td class="px-6 py-4 text-right font-mono text-neutral-550">${file.operands_count}</td>
+                        </tr>
+                    `;
+                });
+                filesReportBody.innerHTML = filesHtml;
+            }
+
+            // 8. Update parsed tokens counts
+            const opCountEl = document.getElementById('parsed-operators-count');
+            if (opCountEl) opCountEl.textContent = results.n1;
+            const opContainer = document.getElementById('unique-operators-container');
+            if (opContainer) {
+                if (results.unique_operators_list && results.unique_operators_list.length > 0) {
+                    opContainer.innerHTML = results.unique_operators_list.map(op => 
+                        `<code class="px-2.5 py-1 text-xs bg-slate-900 border border-neutral-800 rounded text-neutral-300 font-mono hover:border-red-500/30 transition-colors">${escapeHtml(op)}</code>`
+                    ).join('');
+                } else {
+                    opContainer.innerHTML = '<span class="text-xs text-neutral-400 italic">Tidak ada operator yang ditemukan.</span>';
+                }
+            }
+
+            const ordCountEl = document.getElementById('parsed-operands-count');
+            if (ordCountEl) ordCountEl.textContent = results.n2;
+            const ordContainer = document.getElementById('unique-operands-container');
+            if (ordContainer) {
+                if (results.unique_operands_list && results.unique_operands_list.length > 0) {
+                    ordContainer.innerHTML = Math.max(0, results.unique_operands_list.length) ? results.unique_operands_list.map(operand => 
+                        `<code class="px-2.5 py-1 text-xs bg-slate-900 border border-neutral-800 rounded text-neutral-300 font-mono hover:border-red-500/30 transition-colors">${escapeHtml(operand)}</code>`
+                    ).join('') : '<span class="text-xs text-neutral-400 italic">Tidak ada operand yang ditemukan.</span>';
+                } else {
+                    ordContainer.innerHTML = '<span class="text-xs text-neutral-400 italic">Tidak ada operand yang ditemukan.</span>';
+                }
+            }
+
+            // 9. Update source code preview
+            const codeBlock = document.getElementById('analyzed-code-block');
+            if (codeBlock) {
+                codeBlock.textContent = codeInput;
+            }
+
+            // Switch view
+            switchMainTab('results');
+            switchResultsTab('overview');
+            
+            // Re-render Control Flow Graph with the newly loaded data
+            setTimeout(() => {
+                renderCFG();
+                resetCFGZoom();
+            }, 100);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         // Initialize active tabs and subtabs on page load
         switchMainTab('<?php echo $active_tab; ?>');
         <?php if ($results): ?>
+            // Save this analysis run to localStorage history
+            saveToHistory(
+                <?php echo json_encode($analysis_source); ?>,
+                <?php echo json_encode($results); ?>,
+                <?php echo json_encode($code_input); ?>
+            );
+            
             switchResultsTab('overview');
             initCFGPanZoom();
             setAnalysisTimestamp();
