@@ -19,8 +19,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     if ($inputType === 'paste' && !empty($_POST['code'])) {
         $code_input = $_POST['code'];
-        $files_data['pasted_code.php'] = $code_input;
-        $analysis_source = "Teks Kode yang Di-paste";
+        
+        // Dynamically detect file extension to parse functions correctly
+        $detected_ext = 'php'; // fallback default
+        $trimmed_code = trim($code_input);
+        
+        if (stripos($trimmed_code, '<?php') !== false || stripos($trimmed_code, 'namespace ') !== false || stripos($trimmed_code, 'use ') !== false) {
+            $detected_ext = 'php';
+        } elseif (stripos($trimmed_code, '<!DOCTYPE') !== false || stripos($trimmed_code, '<html') !== false || (stripos($trimmed_code, '<body') !== false && stripos($trimmed_code, '<script') !== false)) {
+            $detected_ext = 'html';
+        } elseif (stripos($trimmed_code, 'const ') !== false || stripos($trimmed_code, 'let ') !== false || stripos($trimmed_code, 'console.log') !== false || stripos($trimmed_code, 'document.') !== false || stripos($trimmed_code, 'window.') !== false || stripos($trimmed_code, '=>') !== false) {
+            $detected_ext = 'js';
+        }
+        
+        $files_data['pasted_code.' . $detected_ext] = $code_input;
+        $analysis_source = "Teks Kode yang Di-paste (" . strtoupper($detected_ext) . ")";
         $results = analyzeProject($files_data);
 
     } elseif ($inputType === 'file' && isset($_FILES['single_file']) && $_FILES['single_file']['error'] == 0) {
