@@ -374,8 +374,10 @@ if ($results) {
                             <label class="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">Pilih File (.php / .js / .html):</label>
                             <div id="dropzone-file" class="border-2 border-dashed border-neutral-800 rounded-xl py-24 px-8 text-center bg-neutral-900/20 hover:bg-neutral-900/80 hover:border-red-500/30 transition duration-300 cursor-pointer relative group min-h-[280px] flex flex-col justify-center items-center">
                                 <input type="file" id="file-input-control" name="single_file" accept=".php,.js,.html" class="absolute inset-0 opacity-0 cursor-pointer">
-                                <div class="space-y-4 pointer-events-none">
-                                    <div class="text-5xl text-neutral-550 group-hover:text-red-500 transition-colors duration-300">📄</div>
+                                <div class="space-y-4 pointer-events-none flex flex-col items-center">
+                                    <svg class="w-12 h-12 text-neutral-550 group-hover:text-red-500 transition-colors duration-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"></path>
+                                    </svg>
                                     <p class="text-sm font-semibold text-neutral-300" id="file-display-name">Drag & Drop file Anda di sini, atau cari dari komputer</p>
                                     <p class="text-xs text-neutral-550">Mendukung format berkas .php, .js, .html</p>
                                 </div>
@@ -387,8 +389,10 @@ if ($results) {
                             <label class="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">Pilih Folder Proyek Web:</label>
                             <div id="dropzone-folder" class="border-2 border-dashed border-neutral-800 rounded-xl py-24 px-8 text-center bg-neutral-900/20 hover:bg-neutral-900/80 hover:border-red-500/30 transition duration-300 cursor-pointer relative group min-h-[280px] flex flex-col justify-center items-center">
                                 <input type="file" id="folder-input-control" name="folder_files[]" webkitdirectory directory multiple class="absolute inset-0 opacity-0 cursor-pointer">
-                                <div class="space-y-4 pointer-events-none">
-                                    <div class="text-5xl text-neutral-550 group-hover:text-red-500 transition-colors duration-300">📁</div>
+                                <div class="space-y-4 pointer-events-none flex flex-col items-center">
+                                    <svg class="w-12 h-12 text-neutral-550 group-hover:text-red-500 transition-colors duration-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"></path>
+                                    </svg>
                                     <p class="text-sm font-semibold text-neutral-300" id="folder-display-name">Drag & Drop folder proyek Anda di sini, atau cari folder</p>
                                     <p class="text-xs text-neutral-550">Sistem akan otomatis menggabungkan seluruh file .php, .js, dan .html di dalamnya</p>
                                 </div>
@@ -673,7 +677,9 @@ if ($results) {
                             </div>
 
                             <div class="mt-8 pt-4 border-t border-neutral-800/40 flex items-center gap-2 text-[11px] text-neutral-550">
-                                <span>💡</span>
+                                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2H6a2 2 0 002 2zm10-10a6 6 0 11-12 0c0-1.657.672-3.157 1.757-4.243C8.843 5.672 10.343 5 12 5s3.157.672 4.243 1.757A5.977 5.977 0 0118 11z"></path>
+                                </svg>
                                 <span>Target CC &le; 10 to make unit testing and maintenance easier.</span>
                             </div>
                         </div>
@@ -993,7 +999,14 @@ if ($results) {
                         </div>
                         <div class="glass-card border border-neutral-800 rounded-2xl p-5 shadow-xl">
                             <h4 class="text-xs font-bold text-neutral-550 uppercase tracking-wider mb-4 flex items-center justify-between">
-                                <span>📦 Operand Unik (<span id="parsed-operands-count"><?php echo $results['n2']; ?></span>)</span>
+                                <span class="flex items-center gap-1.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-550">
+                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                    </svg>
+                                    Operand Unik (<span id="parsed-operands-count"><?php echo $results['n2']; ?></span>)
+                                </span>
                             </h4>
                             <div id="unique-operands-container" class="flex flex-wrap gap-2 p-4 bg-neutral-900/20 rounded-xl border border-neutral-800 min-h-[160px] align-content-start">
                                 <?php if (!empty($results['unique_operands_list'])): ?>
