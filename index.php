@@ -257,7 +257,7 @@ if ($results) {
                     <button onclick="switchMainTab('home')" id="nav-home" class="text-sm font-semibold transition-colors duration-200">Overview</button>
                     <button onclick="switchMainTab('analyzer')" id="nav-analyzer" class="text-sm font-semibold transition-colors duration-200">Analyzer Console</button>
                     <button onclick="switchMainTab('history')" id="nav-history" class="text-sm font-semibold text-neutral-500 hover:text-white transition duration-200">History Logs</button>
-                    <button onclick="switchMainTab('home'); setTimeout(() => document.getElementById('how-it-works').scrollIntoView({behavior: 'smooth'}), 150)" class="text-sm font-semibold text-neutral-500 hover:text-white transition duration-200">Docs</button>
+                    <button onclick="switchMainTab('formulas')" id="nav-formulas" class="text-sm font-semibold text-neutral-500 hover:text-white transition duration-200">Rumus &amp; Metrik</button>
                     <div class="h-4 w-[1px] bg-slate-800"></div>
                     <button onclick="switchMainTab('analyzer')" class="px-3.5 py-1.5 bg-white hover:bg-neutral-200 text-xs font-bold rounded-lg text-neutral-950 transition duration-200 shadow-md">
                         Start Analyzer
@@ -289,7 +289,7 @@ if ($results) {
                         Mulai Menganalisis
                         <svg class="ml-2 -mr-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
                     </button>
-                    <button onclick="document.getElementById('how-it-works').scrollIntoView({behavior: 'smooth'})" class="inline-flex items-center px-6 py-3.5 rounded-xl text-sm font-semibold text-neutral-300 hover:text-white border border-neutral-800 hover:border-slate-700 transition duration-300">
+                    <button onclick="switchMainTab('formulas')" class="inline-flex items-center px-6 py-3.5 rounded-xl text-sm font-semibold text-neutral-300 hover:text-white border border-neutral-800 hover:border-slate-700 transition duration-300">
                         Pelajari Parameter
                     </button>
                 </div>
@@ -1149,6 +1149,232 @@ if ($results) {
             </div>
         </div>
 
+        <!-- ==================== VIEW: FORMULAS EXPLANATION ==================== -->
+        <div id="main-view-formulas" class="main-tab-content">
+            <div class="mb-8">
+                <h1 class="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+                    <span class="px-2.5 py-2.5 bg-neutral-900/40 border border-neutral-800 rounded-xl text-red-500 text-sm flex items-center justify-center">
+                        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                    </span>
+                    Rumus &amp; Parameter Metrik Kualitas Kode
+                </h1>
+                <p class="text-xs text-neutral-550 mt-1">Panduan lengkap mengenai dasar matematika, metode parsing token, dan standar ambang batas kualitas perangkat lunak yang digunakan dalam CodePulse.io.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                
+                <!-- Card 1: McCabe Complexity -->
+                <div class="glass-card rounded-2xl p-6 shadow-xl border border-neutral-800 transition duration-300 hover:scale-[1.005]">
+                    <div class="flex items-center gap-3 mb-4 border-b border-neutral-800/60 pb-3">
+                        <div class="w-8 h-8 bg-red-650/15 rounded-lg flex items-center justify-center text-red-500 text-sm font-bold border border-red-500/20">M</div>
+                        <div>
+                            <h3 class="text-base font-bold text-white">McCabe Cyclomatic Complexity</h3>
+                            <p class="text-[10px] text-neutral-555">Mengukur Kompleksitas Aliran Program</p>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-neutral-500 leading-relaxed mb-4">
+                        Diperkenalkan oleh Thomas J. McCabe pada tahun 1976, Cyclomatic Complexity mengukur jumlah jalur eksekusi independen secara linier dalam suatu modul kode sumber (graf alir kontrol).
+                    </p>
+
+                    <!-- Formula Display -->
+                    <div class="bg-neutral-950 p-4 rounded-xl border border-neutral-900 mb-6 flex flex-col items-center justify-center font-mono">
+                        <span class="text-xs text-neutral-555 mb-1">Formula Teori Graf</span>
+                        <span class="text-lg font-bold text-white">M = E − N + 2P</span>
+                        <div class="text-[10px] text-neutral-555 mt-2 text-center leading-relaxed">
+                            <span class="text-red-400">E</span> (Edges) &middot; <span class="text-cyan-400">N</span> (Nodes) &middot; <span class="text-amber-400">P</span> (Connected Components)
+                        </div>
+                    </div>
+
+                    <!-- Practical Parsing implementation -->
+                    <div class="mb-6">
+                        <h4 class="text-xs font-bold text-neutral-300 uppercase tracking-wider mb-2.5">Implementasi Parsing di CodePulse</h4>
+                        <p class="text-xs text-neutral-500 leading-relaxed mb-3">
+                            Secara praktis, analisis statis memindai percabangan keputusan di dalam kode fungsi:
+                        </p>
+                        <div class="bg-neutral-900/40 border border-neutral-800 rounded-xl p-3 text-[11px] font-mono text-neutral-300 space-y-2">
+                            <div>
+                                <span class="text-red-400 font-bold">1. Decision Keywords (+1 per kata kunci):</span>
+                                <div class="text-[10px] text-neutral-555 mt-1 flex flex-wrap gap-1.5">
+                                    <code class="px-1.5 py-0.5 bg-neutral-950 rounded">if</code>
+                                    <code class="px-1.5 py-0.5 bg-neutral-950 rounded">elseif</code>
+                                    <code class="px-1.5 py-0.5 bg-neutral-950 rounded">while</code>
+                                    <code class="px-1.5 py-0.5 bg-neutral-950 rounded">for</code>
+                                    <code class="px-1.5 py-0.5 bg-neutral-950 rounded">foreach</code>
+                                    <code class="px-1.5 py-0.5 bg-neutral-950 rounded">case</code>
+                                    <code class="px-1.5 py-0.5 bg-neutral-950 rounded">catch</code>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-red-400 font-bold">2. Logical Operators (+1 per operator):</span>
+                                <div class="text-[10px] text-neutral-555 mt-1 flex flex-wrap gap-1.5">
+                                    <code class="px-1.5 py-0.5 bg-neutral-950 rounded">&amp;&amp; (AND)</code>
+                                    <code class="px-1.5 py-0.5 bg-neutral-950 rounded">|| (OR)</code>
+                                    <code class="px-1.5 py-0.5 bg-neutral-950 rounded">?? (Null Coalescing)</code>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-red-400 font-bold">3. Ternary Operator (+1 per operator):</span>
+                                <div class="text-[10px] text-neutral-555 mt-1">
+                                    Mengidentifikasi karakter <code class="px-1.5 py-0.5 bg-neutral-950 rounded">?</code> (bukan merupakan nullable data type atau operator null-safe).
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Thresholds Table -->
+                    <div>
+                        <h4 class="text-xs font-bold text-neutral-300 uppercase tracking-wider mb-3">Ambang Batas &amp; Penilaian</h4>
+                        <div class="overflow-hidden border border-neutral-800 rounded-xl">
+                            <table class="w-full text-left text-xs text-neutral-300">
+                                <thead class="bg-neutral-900/40 text-[10px] text-neutral-555 uppercase font-semibold border-b border-neutral-800">
+                                    <tr>
+                                        <th class="px-4 py-2.5">Nilai (CC)</th>
+                                        <th class="px-4 py-2.5">Status Kategori</th>
+                                        <th class="px-4 py-2.5 text-right">Rekomendasi Tindakan</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-neutral-900/60 font-mono text-[11px]">
+                                    <tr class="hover:bg-neutral-900/10">
+                                        <td class="px-4 py-3 font-bold text-white">&le; 10</td>
+                                        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[9px] font-bold border bg-sky-500/10 text-sky-400 border-sky-500/20">Safe</span></td>
+                                        <td class="px-4 py-3 text-right text-neutral-555 font-sans">Kode aman, terstruktur baik dan mudah diuji.</td>
+                                    </tr>
+                                    <tr class="hover:bg-neutral-900/10">
+                                        <td class="px-4 py-3 font-bold text-white">11 - 20</td>
+                                        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[9px] font-bold border bg-amber-500/10 text-amber-400 border-amber-500/20">Moderate</span></td>
+                                        <td class="px-4 py-3 text-right text-neutral-555 font-sans">Kompleksitas sedang. Disarankan pemantauan.</td>
+                                    </tr>
+                                    <tr class="hover:bg-neutral-900/10">
+                                        <td class="px-4 py-3 font-bold text-white">&gt; 20</td>
+                                        <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[9px] font-bold border bg-rose-500/10 text-rose-400 border-rose-500/20">High Risk</span></td>
+                                        <td class="px-4 py-3 text-right text-neutral-555 font-sans text-rose-400/90 font-medium">Beresiko tinggi. Sangat direkomendasikan refactoring!</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Halstead Metrics -->
+                <div class="glass-card rounded-2xl p-6 shadow-xl border border-neutral-800 transition duration-300 hover:scale-[1.005]">
+                    <div class="flex items-center gap-3 mb-4 border-b border-neutral-800/60 pb-3">
+                        <div class="w-8 h-8 bg-cyan-650/15 rounded-lg flex items-center justify-center text-cyan-400 text-sm font-bold border border-cyan-500/20">H</div>
+                        <div>
+                            <h3 class="text-base font-bold text-white">Halstead Complexity Metrics</h3>
+                            <p class="text-[10px] text-neutral-555">Mengukur Volume dan Kompleksitas Token</p>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-neutral-555 leading-relaxed mb-4">
+                        Diperkenalkan oleh Maurice Halstead pada tahun 1977, metrik ini menganalisis jumlah kemunculan token di dalam kode sumber yang dibedakan menjadi **Operator** dan **Operand**.
+                    </p>
+
+                    <!-- Parameter Dasar -->
+                    <div class="mb-5">
+                        <h4 class="text-xs font-bold text-neutral-300 uppercase tracking-wider mb-2.5">Parameter Dasar (Token Pemrograman)</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-neutral-950 p-3 rounded-xl border border-neutral-900 flex flex-col justify-between">
+                                <span class="text-[10px] text-neutral-555 font-bold block mb-1">OPERATORS (n1 &amp; N1)</span>
+                                <span class="text-xs font-bold text-white mb-1">Simbol / Kata Kunci Logika</span>
+                                <p class="text-[10px] text-neutral-555 leading-relaxed">
+                                    Operator matematika (<code class="font-mono text-[9px]">+,-,*,/</code>), komparasi, penugasan (<code class="font-mono text-[9px]">=,+=</code>), struktur kontrol, pemanggilan metode, pemisah (<code class="font-mono text-[9px] font-bold">; , ( ) [ ] { }</code>).
+                                </p>
+                            </div>
+                            <div class="bg-neutral-950 p-3 rounded-xl border border-neutral-900 flex flex-col justify-between">
+                                <span class="text-[10px] text-neutral-555 font-bold block mb-1">OPERANDS (n2 &amp; N2)</span>
+                                <span class="text-xs font-bold text-white mb-1">Variabel &amp; Literal Data</span>
+                                <p class="text-[10px] text-neutral-555 leading-relaxed">
+                                    Nama variabel (misal: <code class="font-mono text-[9px]">$myVar</code>), parameter fungsi, literal teks/string, bilangan numerik, dan tipe data boolean.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-neutral-555 font-mono mt-2 text-center leading-normal">
+                            n1 &middot; n2 = jumlah elemen unik | N1 &middot; N2 = jumlah total kemunculan
+                        </div>
+                    </div>
+
+                    <!-- Derived Formulas Grid -->
+                    <div>
+                        <h4 class="text-xs font-bold text-neutral-300 uppercase tracking-wider mb-3">Daftar Rumus Turunan Halstead</h4>
+                        <div class="space-y-3">
+                            
+                            <!-- Vocabulary & Length -->
+                            <div class="p-3 bg-neutral-900/35 border border-neutral-850 rounded-xl flex items-center justify-between gap-4">
+                                <div class="flex-1">
+                                    <h5 class="text-xs font-bold text-white font-mono">Vocabulary &amp; Length</h5>
+                                    <p class="text-[10px] text-neutral-555 leading-relaxed">Jumlah kosa kata unik program (<code class="text-neutral-400 font-mono">n</code>) dan ukuran panjang total program (<code class="text-neutral-400 font-mono">N</code>).</p>
+                                </div>
+                                <div class="text-right font-mono text-xs font-semibold space-y-1 text-white whitespace-nowrap">
+                                    <div>n = n1 + n2</div>
+                                    <div>N = N1 + N2</div>
+                                </div>
+                            </div>
+
+                            <!-- Volume -->
+                            <div class="p-3 bg-neutral-900/35 border border-neutral-850 rounded-xl flex items-center justify-between gap-4">
+                                <div class="flex-1">
+                                    <h5 class="text-xs font-bold text-white font-mono">Program Volume (V)</h5>
+                                    <p class="text-[10px] text-neutral-555 leading-relaxed">Ukuran ukuran fisik informasi dari kode sumber yang dianalisis (dalam satuan **bit**).</p>
+                                </div>
+                                <div class="text-right font-mono text-xs font-bold text-red-400 whitespace-nowrap">
+                                    V = N &times; log<sub>2</sub>(n)
+                                </div>
+                            </div>
+
+                            <!-- Difficulty -->
+                            <div class="p-3 bg-neutral-900/35 border border-neutral-850 rounded-xl flex items-center justify-between gap-4">
+                                <div class="flex-1">
+                                    <h5 class="text-xs font-bold text-white font-mono">Difficulty (D)</h5>
+                                    <p class="text-[10px] text-neutral-555 leading-relaxed">Tingkat kesulitan penulisan kode. Dipengaruhi rasio operator unik dan kepadatan operand unik.</p>
+                                </div>
+                                <div class="text-right font-mono text-xs font-bold text-cyan-400 whitespace-nowrap">
+                                    D = (n1 / 2) &times; (N2 / n2)
+                                </div>
+                            </div>
+
+                            <!-- Effort -->
+                            <div class="p-3 bg-neutral-900/35 border border-neutral-850 rounded-xl flex items-center justify-between gap-4">
+                                <div class="flex-1">
+                                    <h5 class="text-xs font-bold text-white font-mono">Programming Effort (E)</h5>
+                                    <p class="text-[10px] text-neutral-555 leading-relaxed">Usaha mental kognitif yang diperlukan untuk menyelesaikan atau memahami modul kode tersebut.</p>
+                                </div>
+                                <div class="text-right font-mono text-xs font-bold text-pink-400 whitespace-nowrap">
+                                    E = D &times; V
+                                </div>
+                            </div>
+
+                            <!-- Time Required -->
+                            <div class="p-3 bg-neutral-900/35 border border-neutral-850 rounded-xl flex items-center justify-between gap-4">
+                                <div class="flex-1">
+                                    <h5 class="text-xs font-bold text-white font-mono">Time Required (T)</h5>
+                                    <p class="text-[10px] text-neutral-555 leading-relaxed">Estimasi waktu pemahaman kognitif (detik) berdasarkan Konstanta Stroud (<code class="text-neutral-400 font-mono">S = 18</code> operasi mental/detik).</p>
+                                </div>
+                                <div class="text-right font-mono text-xs font-bold text-amber-400 whitespace-nowrap">
+                                    T = E / 18
+                                </div>
+                            </div>
+
+                            <!-- Delivered Bugs -->
+                            <div class="p-3 bg-neutral-900/35 border border-neutral-850 rounded-xl flex items-center justify-between gap-4">
+                                <div class="flex-1">
+                                    <h5 class="text-xs font-bold text-white font-mono">Delivered Bugs Estimate (B)</h5>
+                                    <p class="text-[10px] text-neutral-555 leading-relaxed">Estimasi kemungkinan jumlah kesalahan/cacat (bug) yang tertanam dalam program tersebut.</p>
+                                </div>
+                                <div class="text-right font-mono text-xs font-bold text-rose-500 whitespace-nowrap">
+                                    B = V / 3000
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
         <!-- Custom Delete Confirmation Modal -->
         <div id="confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm hidden">
             <div class="glass-card rounded-2xl border border-neutral-800 max-w-md w-full p-6 shadow-2xl animate-fadeIn">
@@ -1179,7 +1405,7 @@ if ($results) {
         let activeTimestamp = <?php echo json_encode(date('n/j/Y, g:i:s A')); ?>;
         let activeCodeInput = <?php echo json_encode($code_input); ?>;
 
-        // Main Tab Switcher (Home vs Analyzer Console vs Results vs History)
+        // Main Tab Switcher (Home vs Analyzer Console vs Results vs History vs Formulas)
         function switchMainTab(tabId) {
             document.querySelectorAll('.main-tab-content').forEach(view => view.classList.remove('active'));
             const activeView = document.getElementById('main-view-' + tabId);
@@ -1188,11 +1414,13 @@ if ($results) {
             const btnHome = document.getElementById('nav-home');
             const btnCalc = document.getElementById('nav-analyzer');
             const btnHist = document.getElementById('nav-history');
+            const btnFormula = document.getElementById('nav-formulas');
             
             // Reset nav styles
             if (btnHome) btnHome.className = 'text-sm font-semibold text-neutral-500 hover:text-white transition-colors duration-200';
             if (btnCalc) btnCalc.className = 'text-sm font-semibold text-neutral-500 hover:text-white transition-colors duration-200';
-            if (btnHist) btnHist.className = 'text-sm font-semibold text-neutral-500 hover:text-white transition-colors duration-200';
+            if (btnHist) btnHist.className = 'text-sm font-semibold text-neutral-500 hover:text-white transition duration-200';
+            if (btnFormula) btnFormula.className = 'text-sm font-semibold text-neutral-500 hover:text-white transition duration-200';
             
             // Set styles based on tab selection
             if (tabId === 'home') {
@@ -1202,6 +1430,8 @@ if ($results) {
             } else if (tabId === 'history') {
                 if (btnHist) btnHist.className = 'text-sm font-semibold text-red-500 transition-colors duration-200';
                 renderHistory();
+            } else if (tabId === 'formulas') {
+                if (btnFormula) btnFormula.className = 'text-sm font-semibold text-red-500 transition-colors duration-200';
             }
         }
 
