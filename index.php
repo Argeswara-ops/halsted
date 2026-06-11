@@ -13,6 +13,81 @@ $files_data = [];
 
 require_once __DIR__ . '/lib/Analyzer.php';
 
+// Unified Application Configuration
+$config_file = __DIR__ . '/app_config.json';
+$app_config = [];
+
+if (file_exists($config_file)) {
+    $app_config = json_decode(file_get_contents($config_file), true);
+}
+
+// Fallback defaults if config is corrupted or empty
+if (empty($app_config)) {
+    $app_config = [
+        'site_title' => 'CodePulse - Premium Static Code Analyzer',
+        'site_description' => 'Aplikasi analisis kompleksitas kode menggunakan metode Halstead Metrics & McCabe Complexity dengan dukungan upload file dan folder.',
+        'qris_type' => 'text',
+        'qris_text' => '',
+        'admin_username' => 'admin',
+        'admin_password_hash' => password_hash('admin123', PASSWORD_DEFAULT),
+        'maintenance_mode' => false
+    ];
+    file_put_contents($config_file, json_encode($app_config, JSON_PRETTY_PRINT));
+}
+
+// Handle Maintenance Mode
+if (isset($app_config['maintenance_mode']) && $app_config['maintenance_mode'] === true) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Sistem Pemeliharaan - <?php echo htmlspecialchars($app_config['site_title']); ?></title>
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: { sans: ['Outfit', 'sans-serif'] }
+                    }
+                }
+            }
+        </script>
+        <style>
+            body {
+                background-color: #0b0f19;
+                background-image: radial-gradient(at 50% 50%, rgba(220, 38, 38, 0.06) 0px, transparent 50%);
+            }
+        </style>
+    </head>
+    <body class="min-h-screen flex items-center justify-center text-white p-6">
+        <div class="max-w-md w-full text-center space-y-6 bg-slate-900/40 backdrop-blur-md p-8 rounded-3xl border border-neutral-800 shadow-2xl">
+            <div class="w-16 h-16 bg-gradient-to-br from-red-650 to-red-500 rounded-2xl flex items-center justify-center text-white font-mono font-bold text-xl shadow-md mx-auto relative">
+                <span class="absolute inset-0 bg-red-500/20 rounded-2xl animate-ping opacity-75"></span>
+                <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+            </div>
+            <h1 class="text-2xl font-extrabold tracking-tight">System Under Maintenance</h1>
+            <p class="text-xs text-neutral-400 leading-relaxed">
+                Kami sedang melakukan peningkatan performa dan pemeliharaan server secara berkala. Mohon maaf atas ketidaknyamanan ini, situs akan segera kembali aktif.
+            </p>
+            <div class="h-[1px] bg-neutral-800 my-4"></div>
+            <div class="flex justify-center gap-4 text-[10px] text-neutral-500">
+                <span>CodePulse.io © 2026</span>
+                <span>•</span>
+                <a href="admin.php" class="hover:text-white transition font-semibold">Admin Panel</a>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
 // Form Submission Handler
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $inputType = $_POST['input_type'] ?? 'paste';
@@ -80,14 +155,16 @@ if ($results) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Aplikasi analisis kompleksitas kode menggunakan metode Halstead Metrics & McCabe Complexity dengan dukungan upload file dan folder.">
-    <title>CodePulse - Premium Static Code Analyzer</title>
+    <meta name="description" content="<?php echo htmlspecialchars($app_config['site_description'] ?? ''); ?>">
+    <title><?php echo htmlspecialchars($app_config['site_title'] ?? ''); ?></title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QRCode JS library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -258,6 +335,12 @@ if ($results) {
                     <button onclick="switchMainTab('analyzer')" id="nav-analyzer" class="text-sm font-semibold transition-colors duration-200">Analyzer Console</button>
                     <button onclick="switchMainTab('history')" id="nav-history" class="text-sm font-semibold text-neutral-500 hover:text-white transition duration-200">History Logs</button>
                     <button onclick="switchMainTab('formulas')" id="nav-formulas" class="text-sm font-semibold text-neutral-500 hover:text-white transition duration-200">Rumus &amp; Metrik</button>
+                    <button onclick="openDonateModal()" class="text-sm font-semibold text-red-500 hover:text-red-400 transition duration-200 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-red-500 fill-current" viewBox="0 0 24 24">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                        <span>Donasi</span>
+                    </button>
                     <div class="h-4 w-[1px] bg-slate-800"></div>
                     <button onclick="switchMainTab('analyzer')" class="px-3.5 py-1.5 bg-white hover:bg-neutral-200 text-xs font-bold rounded-lg text-neutral-950 transition duration-200 shadow-md">
                         Start Analyzer
@@ -1391,8 +1474,9 @@ if ($results) {
 
     <!-- Footer -->
     <footer class="mt-20 border-t border-neutral-800 bg-neutral-900/20/50 py-8 relative z-10 no-print">
-        <div class="max-w-[1600px] mx-auto px-6 text-center text-xs text-neutral-400">
+        <div class="max-w-[1600px] mx-auto px-6 text-center text-xs text-neutral-450 space-y-2">
             <p>&copy; 2026 CodePulse. Dibuat oleh <a href="https://github.com/Argeswara-ops" target="_blank" class="text-red-500 hover:underline">Argeswara-ops</a>. Premium Edition.</p>
+            <p><a href="admin.php" target="_blank" class="text-neutral-500 hover:text-white transition font-medium">⚙️ Panel Admin</a></p>
         </div>
     </footer>
 
@@ -2641,6 +2725,120 @@ if ($results) {
             setAnalysisTimestamp();
         <?php endif; ?>
         switchInputMode('<?php echo $inputType; ?>');
+        // Donate Modal Handlers
+        let qrcodeInstance = null;
+        function openDonateModal() {
+            const modal = document.getElementById('donate-modal');
+            const card = document.getElementById('donate-modal-card');
+            if (modal && card) {
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    card.classList.remove('scale-95');
+                }, 10);
+
+                // Generate dynamic QR code if type is text and element exists
+                const qrContainer = document.getElementById('qris-qrcode-container');
+                if (qrContainer && !qrcodeInstance) {
+                    qrContainer.innerHTML = '';
+                    qrcodeInstance = new QRCode(qrContainer, {
+                        text: <?php echo json_encode($app_config['qris_text'] ?? ''); ?>,
+                        width: 200,
+                        height: 200,
+                        colorDark : "#000000",
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.M
+                    });
+                }
+            }
+        }
+
+        function closeDonateModal() {
+            const modal = document.getElementById('donate-modal');
+            const card = document.getElementById('donate-modal-card');
+            if (modal && card) {
+                modal.classList.add('opacity-0');
+                card.classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        window.addEventListener('click', function(e) {
+            const modal = document.getElementById('donate-modal');
+            if (modal && e.target === modal) {
+                closeDonateModal();
+            }
+        });
     </script>
+
+    <!-- ==================== MODAL: DONATE ==================== -->
+    <div id="donate-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md hidden opacity-0 transition-opacity duration-300 no-print">
+        <div class="glass-card rounded-2xl border border-neutral-800 max-w-sm w-full p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="donate-modal-card">
+            
+            <div id="donate-main-view" class="space-y-4">
+                <div class="flex justify-between items-center mb-1">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <svg class="w-4 h-4 text-red-500 fill-current" viewBox="0 0 24 24">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                        <span>Dukung CodePulse.io</span>
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <a href="admin.php" target="_blank" class="text-neutral-500 hover:text-white transition text-xs flex items-center gap-1.5" title="Buka Panel Admin">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <span>Admin</span>
+                        </a>
+                        <button onclick="closeDonateModal()" class="text-neutral-550 hover:text-white transition text-xl leading-none">&times;</button>
+                    </div>
+                </div>
+
+                <div class="text-center space-y-4">
+                    <p class="text-xs text-neutral-400 leading-relaxed">
+                        Dukung kelangsungan server & pengembangan CodePulse.io. Pindai QRIS di bawah ini melalui GoPay, OVO, DANA, LinkAja, atau Mobile Banking Anda.
+                    </p>
+
+                    <!-- QRIS Image / Placeholder Container -->
+                    <div class="relative w-56 h-56 mx-auto bg-white p-2 rounded-xl border border-neutral-855 flex items-center justify-center overflow-hidden">
+                        <?php if ($app_config['qris_type'] === 'image' && file_exists(__DIR__ . '/qris.png')): ?>
+                            <img src="qris.png" alt="QRIS CodePulse" class="w-full h-full object-contain">
+                        <?php elseif ($app_config['qris_type'] === 'text' && !empty($app_config['qris_text'])): ?>
+                            <div id="qris-qrcode-container" class="w-full h-full flex items-center justify-center p-1 bg-white"></div>
+                        <?php else: ?>
+                            <!-- Fallback / Placeholder if qris.png doesn't exist yet -->
+                            <div class="text-center p-4 flex flex-col items-center justify-center bg-white text-neutral-900 rounded-xl w-full h-full">
+                                <svg class="w-10 h-10 text-neutral-400 mb-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <p class="text-[11px] font-bold">QRIS Belum Tersedia</p>
+                                <p class="text-[9px] text-neutral-500 mt-1 leading-normal">Silakan masuk ke menu admin untuk melakukan konfigurasi QRIS Anda.</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="flex justify-center gap-1.5 pt-1 flex-wrap">
+                        <span class="px-2 py-0.5 bg-neutral-900 border border-neutral-800 rounded text-[9px] font-bold text-neutral-455">GO-PAY</span>
+                        <span class="px-2 py-0.5 bg-neutral-900 border border-neutral-800 rounded text-[9px] font-bold text-neutral-455">OVO</span>
+                        <span class="px-2 py-0.5 bg-neutral-900 border border-neutral-800 rounded text-[9px] font-bold text-neutral-455">DANA</span>
+                        <span class="px-2 py-0.5 bg-neutral-900 border border-neutral-800 rounded text-[9px] font-bold text-neutral-455">LinkAja</span>
+                        <span class="px-2 py-0.5 bg-neutral-900 border border-neutral-800 rounded text-[9px] font-bold text-neutral-455">QRIS</span>
+                    </div>
+
+                    <p class="text-[9px] text-neutral-500 italic">
+                        Terima kasih atas segala bentuk kontribusi Anda!
+                    </p>
+                </div>
+
+                <div class="mt-5 pt-3 border-t border-neutral-850">
+                    <button onclick="closeDonateModal()" class="w-full py-2 bg-neutral-900 hover:bg-slate-800 border border-neutral-800 text-neutral-300 rounded-xl text-xs font-bold transition">Tutup</button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
 </body>
 </html>

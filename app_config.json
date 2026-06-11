@@ -1,0 +1,9 @@
+{
+    "site_title": "CodePulse - Premium Static Code Analyzer",
+    "site_description": "Aplikasi analisis kompleksitas kode menggunakan metode Halstead Metrics & McCabe Complexity dengan dukungan upload file dan folder.",
+    "qris_type": "image",
+    "qris_text": "",
+    "admin_username": "admin",
+    "admin_password_hash": "$2y$12$7ovU053FLBeYcLi3BJ3C5eTzEt\/F9Z126WJWAW\/QAQn2XY1RwwQPK",
+    "maintenance_mode": false
+}
